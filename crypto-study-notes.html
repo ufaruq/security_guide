@@ -1,0 +1,1225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cryptographic Engineering — Study Notes</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #131925;
+    --surface2: #1a2233;
+    --border: #2a3444;
+    --accent: #00d4aa;
+    --accent2: #7c5cfc;
+    --accent3: #ff6b6b;
+    --accent4: #ffd93d;
+    --accent5: #00bfff;
+    --text: #e0e6ed;
+    --text-dim: #8892a4;
+    --text-bright: #ffffff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+  }
+
+  /* ─── Resource bar ─── */
+  .resource-bar {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 40px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 16px;
+    gap: 6px;
+    z-index: 200;
+    font-size: 12px;
+  }
+  .resource-bar span { color: var(--text-dim); margin-right: 4px; }
+  .resource-bar a {
+    color: var(--accent); text-decoration: none;
+    padding: 4px 12px;
+    border: 1px solid rgba(0,212,170,0.3);
+    border-radius: 5px;
+    transition: all 0.15s;
+    display: flex; align-items: center; gap: 5px;
+  }
+  .resource-bar a:last-child { color: var(--accent2); border-color: rgba(124,92,252,0.3); }
+  .resource-bar a:hover { background: rgba(0,212,170,0.1); }
+  .resource-bar a:last-child:hover { background: rgba(124,92,252,0.1); }
+
+  /* ─── Layout ─── */
+  .app {
+    display: grid;
+    grid-template-columns: 240px 1fr 300px;
+    min-height: 100vh;
+    padding-top: 40px;
+  }
+
+  /* ─── Sidebar ─── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 20px 0;
+    position: fixed;
+    top: 40px;
+    width: 240px;
+    height: calc(100vh - 40px);
+    overflow-y: auto;
+  }
+  .sidebar h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    color: var(--accent);
+    padding: 0 16px;
+    margin-bottom: 16px;
+  }
+  .sidebar .section-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--text-dim);
+    padding: 14px 16px 4px;
+    opacity: 0.6;
+  }
+  .sidebar a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    color: var(--text-dim);
+    text-decoration: none;
+    font-size: 13px;
+    border-left: 3px solid transparent;
+    transition: all 0.15s;
+  }
+  .sidebar a:hover { color: var(--text-bright); background: rgba(0,212,170,0.05); border-left-color: var(--accent); }
+  .sidebar a .progress-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    flex-shrink: 0;
+  }
+  .sidebar a .progress-dot.done { background: var(--accent); border-color: var(--accent); }
+  .sidebar a .progress-dot.partial { background: var(--accent4); border-color: var(--accent4); }
+  .sidebar a .progress-dot.review { background: var(--accent3); border-color: var(--accent3); }
+
+  /* ─── Progress Bar ─── */
+  .progress-bar-container {
+    padding: 12px 16px;
+    margin-bottom: 8px;
+  }
+  .progress-label {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+  .progress-bar {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    border-radius: 3px;
+    transition: width 0.3s;
+  }
+
+  /* ─── Main Content ─── */
+  .main {
+    margin-left: 240px;
+    margin-right: 300px;
+    padding: 40px 48px 100px;
+    max-width: 800px;
+  }
+
+  h1 {
+    font-size: 36px;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 4px;
+  }
+  .subtitle { color: var(--text-dim); font-size: 16px; margin-bottom: 32px; }
+
+  /* ─── Section ─── */
+  .study-section {
+    margin-bottom: 48px;
+    scroll-margin-top: 20px;
+  }
+  .study-section h2 {
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text-bright);
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .study-section h2 .section-badge {
+    font-size: 11px;
+    padding: 2px 10px;
+    border-radius: 4px;
+    font-weight: 600;
+  }
+  .badge-tls { background: rgba(0,212,170,0.15); color: var(--accent); }
+  .badge-pki { background: rgba(124,92,252,0.15); color: var(--accent2); }
+  .badge-verify { background: rgba(255,217,61,0.15); color: var(--accent4); }
+  .badge-supply { background: rgba(255,107,107,0.15); color: var(--accent3); }
+  .badge-git { background: rgba(0,191,255,0.15); color: var(--accent5); }
+  .badge-browser { background: rgba(124,92,252,0.15); color: #7c5cfc; }
+  .badge-appsec { background: rgba(255,107,107,0.15); color: #ff6b6b; }
+
+  /* ─── Topic Card ─── */
+  .topic-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .topic-header {
+    padding: 14px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+    user-select: none;
+  }
+  .topic-header:hover { background: rgba(0,212,170,0.03); }
+  .topic-title {
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--text-bright);
+  }
+  .topic-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .status-btn {
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 11px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .status-btn:hover { border-color: var(--accent); }
+  .status-btn.active-understood { background: rgba(0,212,170,0.15); border-color: var(--accent); color: var(--accent); }
+  .status-btn.active-review { background: rgba(255,217,61,0.15); border-color: var(--accent4); color: var(--accent4); }
+  .status-btn.active-confused { background: rgba(255,107,107,0.15); border-color: var(--accent3); color: var(--accent3); }
+
+  .topic-body {
+    display: none;
+    padding: 0 18px 18px;
+  }
+  .topic-card.open .topic-body { display: block; }
+
+  /* ─── Key Concepts ─── */
+  .key-concepts {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 14px;
+  }
+  .key-concepts .kc-title {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .key-concepts p {
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 4px;
+  }
+
+  /* ─── Prompts ─── */
+  .study-prompts {
+    margin-bottom: 14px;
+  }
+  .study-prompts .prompt-label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent2);
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  .prompt-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 6px;
+    font-size: 13px;
+    color: var(--text-dim);
+  }
+  .prompt-item::before {
+    content: '?';
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: rgba(124,92,252,0.15);
+    color: var(--accent2);
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  /* ─── Note area ─── */
+  .note-area {
+    margin-top: 12px;
+  }
+  .note-area label {
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--accent4);
+    font-weight: 600;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .note-area textarea {
+    width: 100%;
+    min-height: 80px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    padding: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    line-height: 1.6;
+  }
+  .note-area textarea:focus { border-color: var(--accent); }
+  .note-area textarea::placeholder { color: #3a4555; }
+
+  /* ─── Connections ─── */
+  .connections {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+  .connections .conn-label {
+    font-weight: 600;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+  }
+  .conn-link {
+    display: inline-block;
+    padding: 2px 8px;
+    background: var(--surface2);
+    border-radius: 4px;
+    font-size: 11px;
+    margin: 2px 4px 2px 0;
+    color: var(--accent);
+    cursor: pointer;
+    text-decoration: none;
+    border: 1px solid transparent;
+  }
+  .conn-link:hover { border-color: var(--accent); }
+
+  /* ─── Right Panel: Review Queue ─── */
+  .review-panel {
+    position: fixed;
+    right: 0; top: 0;
+    width: 300px;
+    height: 100vh;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    padding: 20px 16px;
+    overflow-y: auto;
+  }
+  .review-panel h3 {
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+  .review-panel h4 {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 16px;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .review-item {
+    background: var(--surface2);
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    transition: border 0.15s;
+    border: 1px solid transparent;
+  }
+  .review-item:hover { border-color: var(--accent); }
+  .review-item .ri-title { font-size: 13px; font-weight: 600; color: var(--text-bright); }
+  .review-item .ri-note { font-size: 11px; color: var(--text-dim); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+  .stat-box {
+    background: var(--surface2);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+  .stat-box .stat-num { font-size: 24px; font-weight: 800; }
+  .stat-box .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-dim); }
+  .stat-green .stat-num { color: var(--accent); }
+  .stat-yellow .stat-num { color: var(--accent4); }
+  .stat-red .stat-num { color: var(--accent3); }
+  .stat-dim .stat-num { color: var(--text-dim); }
+
+  /* ─── Export button ─── */
+  .export-btn {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 8px;
+    color: var(--bg);
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 16px;
+    transition: opacity 0.15s;
+  }
+  .export-btn:hover { opacity: 0.9; }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 1100px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar, .review-panel { display: none; }
+    .main { margin: 0; padding: 24px 20px; max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<div class="resource-bar">
+  <span>📚 Study Resources:</span>
+  <a href="tls-cryptographic-engineering-guide.html" target="_blank">📖 Full Reference Guide</a>
+  <a href="crypto-mind-map.html" target="_blank">🗺️ Interactive Mind Map</a>
+  <a href="web-app-security.html" target="_blank">🔓 Web App Security</a>
+  <a href="browser-security.html" target="_blank">🛡️ Browser Security</a>
+</div>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <h2>Study Tracker</h2>
+    <div class="progress-bar-container">
+      <div class="progress-label">
+        <span>Overall Progress</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+      </div>
+    </div>
+    <div id="sidebar-links"></div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main" id="main-content"></main>
+
+  <!-- Review Panel -->
+  <aside class="review-panel" id="review-panel">
+    <h3>Dashboard</h3>
+    <div class="stats-grid" id="stats-grid"></div>
+    <h4 id="review-header">Needs Review</h4>
+    <div id="review-list"></div>
+    <h4>Confused</h4>
+    <div id="confused-list"></div>
+    <button class="export-btn" id="export-btn">Export All Notes (.md)</button>
+  </aside>
+</div>
+
+<script>
+// ─── Study Data ───
+const sections = [
+  {
+    id: "tls", title: "TLS & Handshake", badge: "badge-tls",
+    topics: [
+      {
+        id: "tls-overview", title: "TLS 1.3 Overview",
+        concepts: "TLS provides confidentiality (encryption), integrity (tamper detection), and authentication (identity verification). TLS 1.3 (RFC 8446) removed all insecure legacy features — every removal maps to a named attack.",
+        prompts: [
+          "What three guarantees does TLS provide?",
+          "Why did TLS 1.3 remove RSA key exchange?",
+          "Name three things TLS 1.3 removed and the attacks they enabled.",
+        ],
+        connections: ["tls-handshake", "tls-cipher", "tls-attacks"]
+      },
+      {
+        id: "tls-handshake", title: "TLS 1.3 Handshake (1-RTT)",
+        concepts: "Client speculatively sends key shares in ClientHello. Server responds with its key share. Both derive handshake keys via HKDF. Everything after ServerHello is encrypted. The handshake completes in 1 round-trip." +
+          '<pre style=\"background:#0a0e17;border:1px solid #2a3444;border-radius:6px;padding:14px;margin-top:12px;font-size:12px;line-height:1.5;color:#8892a4;overflow-x:auto;\">' +
+          'Client                                  Server\n' +
+          '  |                                       |\n' +
+          '  |--- ClientHello + KeyShare ----------->|\n' +
+          '  |    (supported ciphers, extensions)    |\n' +
+          '  |                                       |\n' +
+          '  |<-- ServerHello + KeyShare ------------|\n' +
+          '  |<-- {EncryptedExtensions} ------------|\n' +
+          '  |<-- {Certificate} --------------------|\n' +
+          '  |<-- {CertificateVerify} --------------|\n' +
+          '  |<-- {Finished} -----------------------|\n' +
+          '  |                                       |\n' +
+          '  |--- {Finished} ----------------------->|\n' +
+          '  |                                       |\n' +
+          '  |<== Application Data =================>|\n' +
+          '\n' +
+          '  {} = encrypted with handshake keys</pre>',
+        prompts: [
+          "Draw the TLS 1.3 handshake from memory — what messages are sent?",
+          "Why are the Certificate and CertificateVerify messages encrypted in TLS 1.3 but not in 1.2?",
+          "What is the CertificateVerify message and why is it necessary beyond chain validation?",
+        ],
+        connections: ["tls-ecdhe", "tls-hkdf", "tls-0rtt"]
+      },
+      {
+        id: "tls-hkdf", title: "HKDF Key Schedule",
+        concepts: "HKDF-Extract combines inputs (PSK, ECDHE shared secret). Derive-Secret produces keys with transcript hash binding. Three stages: Early Secret → Handshake Secret → Master Secret. Transcript hash at each step means tampering breaks all derived keys.",
+        prompts: [
+          "Walk through the three stages of the TLS 1.3 key schedule.",
+          "Why does the key schedule incorporate the transcript hash at each derivation step?",
+          "What happens if an attacker modifies a handshake message?",
+        ],
+        connections: ["tls-handshake", "verify-hmac"]
+      },
+      {
+        id: "tls-0rtt", title: "0-RTT Resumption",
+        concepts: "Uses a pre-shared key (PSK) from a previous session to send data immediately. 0-RTT has two distinct, orthogonal security limitations: (1) Lack of forward secrecy — early data keys are derived from the PSK (session ticket), not a fresh ephemeral key exchange, so compromise of the ticket key exposes past early data. (2) Replay vulnerability — the server cannot distinguish a legitimately retransmitted first message from an attacker replaying it, because no server-side nonce has been exchanged yet. Only safe for idempotent requests (GET). Server must implement anti-replay (e.g., single-use tokens or time-window checks).",
+        prompts: [
+          "Why does 0-RTT lack forward secrecy? (Hint: what key material are early data keys derived from?)",
+          "Why is 0-RTT vulnerable to replay, and why are these two problems orthogonal to each other?",
+          "What types of requests are safe to send as 0-RTT data?",
+          "How can a server mitigate 0-RTT replay attacks?",
+        ],
+        connections: ["tls-handshake"]
+      },
+      {
+        id: "tls-ecdhe", title: "ECDHE Key Exchange",
+        concepts: "Both sides generate ephemeral key pairs on an elliptic curve (X25519 or P-256). They exchange public keys and compute the same shared secret via scalar multiplication. Ephemeral means keys are discarded after use = forward secrecy.",
+        prompts: [
+          "Explain ECDHE key exchange in your own words — how do both sides arrive at the same shared secret?",
+          "What does 'ephemeral' mean and why does it provide forward secrecy?",
+          "What would happen if TLS used static DH keys instead of ephemeral ones?",
+        ],
+        connections: ["tls-forward", "tls-cipher"]
+      },
+      {
+        id: "tls-forward", title: "Forward Secrecy",
+        concepts: "Even if the server's long-term private key is compromised later, past session keys cannot be recovered because they depended on ephemeral keys that were discarded. This is why TLS 1.3 mandates ephemeral DH and removed RSA key transport.",
+        prompts: [
+          "Explain why RSA key exchange doesn't provide forward secrecy.",
+          "If an attacker records all traffic today and steals the server key next year, can they decrypt the recordings? Why or why not?",
+        ],
+        connections: ["tls-ecdhe"]
+      },
+      {
+        id: "tls-cipher", title: "Cipher Suites & AEAD",
+        concepts: "TLS 1.3 only allows 5 cipher suites. All use AEAD (Authenticated Encryption with Associated Data) — encryption + integrity in one operation. AES-GCM (hardware-accelerated) and ChaCha20-Poly1305 (fast on devices without AES hardware acceleration) are dominant.",
+        prompts: [
+          "What does AEAD stand for and why is it better than separate encryption + MAC?",
+          "When would you prefer ChaCha20-Poly1305 over AES-GCM?",
+          "Why does TLS 1.3 only specify the AEAD + hash in the cipher suite name?",
+        ],
+        connections: ["tls-overview", "verify-mac"]
+      },
+      {
+        id: "tls-sni", title: "SNI & Encrypted Client Hello",
+        concepts: "SNI sends the target hostname in plaintext in the ClientHello — a privacy leak. ECH splits the ClientHello into an outer (plaintext, with cover SNI) and inner (encrypted, with real SNI), using a key published in DNS. Requires encrypted DNS (DoH or DoT) to protect the ECH config key. Observer only sees the CDN hostname.",
+        prompts: [
+          "Why can't TLS encrypt the SNI natively (without ECH)?",
+          "How does ECH use DNS to distribute the encryption key?",
+          "What happens if ECH is deployed without encrypted DNS (DoH or DoT)?",
+        ],
+        connections: ["tls-handshake", "pki-dane"]
+      },
+      {
+        id: "tls-inspect", title: "TLS Inspection",
+        concepts: "A corporate proxy terminates TLS from both sides: browser↔proxy (using proxy's cert signed by org CA) and proxy↔server (real cert). The org pushes their root CA into device trust stores. Breaks end-to-end trust. Incompatible with certificate pinning.",
+        prompts: [
+          "Draw the two TLS sessions in a TLS inspection setup.",
+          "Why does TLS inspection require the org's root CA in the trust store?",
+          "Why does certificate pinning break TLS inspection? Is this a feature or a bug?",
+        ],
+        connections: ["pki-chain", "pki-pinning"]
+      },
+      {
+        id: "tls-attacks", title: "Known TLS Attacks",
+        concepts: "BEAST (CBC IV), POODLE (CVE-2014-3566 — padding oracle on SSL 3.0's CBC padding; the fix was disabling SSL 3.0 entirely, not a TLS-level mitigation; a later variant, POODLE-TLS, affected some TLS CBC implementations but the original attack is SSL 3.0-specific), DROWN (SSLv2 cross-protocol), FREAK/Logjam (export ciphers), ROBOT (Bleichenbacher), Heartbleed (OpenSSL buffer over-read). Almost every attack targeted backward-compatible features that TLS 1.3 removed.",
+        prompts: [
+          "Pick three attacks from the table and explain what they exploited.",
+          "What pattern connects most TLS attacks?",
+          "Why was Heartbleed different from the other attacks?",
+        ],
+        connections: ["tls-overview", "tls-cipher"]
+      },
+    ]
+  },
+  {
+    id: "pki", title: "PKI & Certificates", badge: "badge-pki",
+    topics: [
+      {
+        id: "pki-chain", title: "Chain of Trust",
+        concepts: "Root CA (self-signed, in trust store) → Intermediate CA (signed by root, does issuance) → Leaf cert (signed by intermediate, bound to a domain). Each link is verified by checking the issuer's signature. Intermediates provide defense in depth.",
+        prompts: [
+          "Why don't root CAs sign leaf certificates directly?",
+          "What happens if an intermediate CA is compromised? Compare to root compromise.",
+          "How does the browser build the chain from a leaf cert to a trusted root?",
+        ],
+        connections: ["pki-x509", "pki-verify"]
+      },
+      {
+        id: "pki-x509", title: "X.509 Certificate Format",
+        concepts: "Contains: subject (identity), public key, issuer, serial number, validity period, SAN (domain names), key usage, basic constraints (CA:TRUE/FALSE), AIA (OCSP responder URL), SCTs (Certificate Transparency). The CA's signature covers all of this.",
+        prompts: [
+          "What's the difference between the Subject CN and the Subject Alternative Name?",
+          "Why is the Basic Constraints extension critical?",
+          "What are SCTs and why are they in the certificate?",
+        ],
+        connections: ["pki-chain", "pki-ct"]
+      },
+      {
+        id: "pki-verify", title: "7-Step Certificate Verification",
+        concepts: "1) Chain building, 2) Signature verification walking up, 3) Validity period, 4) Revocation check, 5) Name matching (SAN), 6) Constraint checks (Basic Constraints, Key Usage), 7) CertificateVerify (proves server has the private key).",
+        prompts: [
+          "List all 7 steps from memory.",
+          "Why is step 7 (CertificateVerify) separate from chain validation?",
+          "What happens if the server omits the intermediate certificate?",
+        ],
+        connections: ["pki-chain", "pki-revoke"]
+      },
+      {
+        id: "pki-revoke", title: "Revocation (CRL, OCSP, Stapling)",
+        concepts: "CRL: periodic list of revoked serial numbers (slow, large). OCSP: real-time query to CA (faster but privacy leak — CA knows what sites you visit). OCSP Stapling: server pre-fetches its own OCSP response and includes it in the TLS handshake. Important caveat: most browsers implement OCSP soft-fail — if the OCSP responder is unreachable, the browser proceeds without revocation checking (failing open). This means an attacker who can block OCSP responses can suppress revocation checks entirely. Note also that Chrome has largely abandoned live OCSP checking in favor of CRLite/CRLSets (locally cached, regularly updated revocation data), which avoids the soft-fail and privacy problems.",
+        prompts: [
+          "What's the privacy problem with OCSP?",
+          "Why is OCSP stapling preferred over regular OCSP?",
+          "What does 'fail-open' (soft-fail) mean in the context of OCSP, and how can an attacker exploit it?",
+          "How do CRLite/CRLSets differ from live OCSP, and why did Chrome prefer them?",
+        ],
+        connections: ["pki-verify", "pki-ct"]
+      },
+      {
+        id: "pki-ct", title: "Certificate Transparency",
+        concepts: "Every public cert must be logged in append-only CT logs. SCTs (Signed Certificate Timestamps) prove inclusion. Chrome requires SCTs. CT doesn't prevent mis-issuance — it makes it detectable. You can monitor logs for unauthorized certs for your domain.",
+        prompts: [
+          "How does CT detect a compromised CA issuing fraudulent certificates?",
+          "What are SCTs and where do they appear?",
+          "Why doesn't CT prevent mis-issuance, and what complements it?",
+        ],
+        connections: ["pki-x509", "pki-caa"]
+      },
+      {
+        id: "pki-pinning", title: "Certificate Pinning",
+        concepts: "Pin expected SPKI hash (public key fingerprint) in the app. Three types: key pinning, cert pinning, CA pinning. HPKP (browser-level) was removed by Chrome in 2018 not only due to operational risk but because it was an active attack vector: an attacker who could inject a single HTTP response could pin their own key, permanently locking legitimate users out of the site ('HPKP hijacking'). This made HPKP a denial-of-service weapon. App-level pinning (Android Network Security Config, iOS ATS) is active.",
+        prompts: [
+          "Why is SPKI pinning more flexible than full certificate pinning?",
+          "Why did HPKP get removed from browsers?",
+          "Why does pinning break TLS inspection?",
+        ],
+        connections: ["tls-inspect", "pki-chain"]
+      },
+      {
+        id: "pki-mtls", title: "Mutual TLS (mTLS)",
+        concepts: "Both sides present certificates. Server sends CertificateRequest; client responds with its own cert + CertificateVerify. Used in service meshes (SPIFFE/SPIRE), zero trust, IoT device auth, financial APIs.",
+        prompts: [
+          "What two extra messages does mTLS add to the handshake?",
+          "How does a service mesh like Istio handle mTLS certificate lifecycle?",
+          "Why is mTLS better than API keys for service-to-service auth?",
+        ],
+        connections: ["tls-handshake", "pki-chain"]
+      },
+      {
+        id: "pki-dane", title: "DANE & DNSSEC",
+        concepts: "TLSA DNS records specify which cert/key is valid for a domain. Secured by DNSSEC signature chain. DANE-EE (3 1 1) bypasses the CA model entirely. Strong for email (SMTP), weak for browsers (DNSSEC resolver issues).",
+        prompts: [
+          "How does DANE eliminate the need for third-party CAs?",
+          "Why is DANE widely deployed for email but not for HTTPS?",
+          "What does the DNSSEC chain protect against?",
+        ],
+        connections: ["pki-chain", "pki-caa"]
+      },
+      {
+        id: "pki-hsts", title: "HSTS & Preloading",
+        concepts: "HSTS tells browsers to always use HTTPS for a domain. Prevents SSL stripping attacks. Preloading hardcodes the domain into the browser — even the first visit is protected. Preloading is nearly irreversible.",
+        prompts: [
+          "Describe an SSL stripping attack and how HSTS prevents it.",
+          "Why is HSTS preloading considered a 'one-way door'?",
+        ],
+        connections: ["tls-overview"]
+      },
+      {
+        id: "pki-caa", title: "CAA Records",
+        concepts: "DNS CAA records specify which CAs can issue for your domain. CAs are required to check before issuance. Lightweight defense-in-depth. Combined with CT monitoring = prevention + detection.",
+        prompts: [
+          "Can CAA prevent a compromised CA from issuing a fraudulent cert?",
+          "What does the complete defense stack look like? (CAA + CT + HSTS + short-lived certs)",
+        ],
+        connections: ["pki-ct", "pki-dane"]
+      },
+    ]
+  },
+  {
+    id: "verify", title: "Verification & Signing", badge: "badge-verify",
+    topics: [
+      {
+        id: "verify-mac", title: "MACs (HMAC, Poly1305, CMAC)",
+        concepts: "MAC = tag computed from message + shared key. Only key holders can produce/verify. HMAC: two nested hashes, universal. Poly1305: one-time authenticator, used with ChaCha20. CMAC: block cipher based, common in payment systems.",
+        prompts: [
+          "What's the difference between a hash and a MAC?",
+          "Why can't a MAC provide non-repudiation?",
+          "When would you choose CMAC over HMAC?",
+        ],
+        connections: ["verify-sig", "tls-cipher"]
+      },
+      {
+        id: "verify-sig", title: "Digital Signatures",
+        concepts: "Hash data → sign hash with private key → anyone verifies with public key. Provides non-repudiation. RSA-PSS, ECDSA, Ed25519 (deterministic nonces = safe by design), ML-DSA (post-quantum).",
+        prompts: [
+          "Why do we hash the data before signing instead of signing the data directly?",
+          "What catastrophic failure happens with ECDSA nonce reuse?",
+          "Why is Ed25519 considered safer than ECDSA from an implementation perspective?",
+        ],
+        connections: ["verify-mac", "verify-codesign", "verify-gpg"]
+      },
+      {
+        id: "verify-codesign", title: "Code Signing (Apple, Windows, Android, Linux)",
+        concepts: "Apple: Developer ID cert → codesign → notarize → Gatekeeper verifies. Windows: Authenticode + EV certs + SmartScreen reputation. Android: self-signed, identity by continuity, v2/v3/v4 signing schemes. Caveat: since Android 8.0 (enforced for new apps on Google Play), Google Play App Signing means Google holds the actual app signing key and developers only use a separate upload key — in this model, Google, not the developer, controls the key that end-user devices ultimately trust. Linux: Secure Boot, kernel module signing, IMA/EVM.",
+        prompts: [
+          "Compare how Apple vs. Windows handle code signing trust — who controls the CA?",
+          "Why does Android use self-signed keys? What's the tradeoff?",
+          "How does Google Play App Signing change the trust model for Android apps, and who ultimately controls the key trusted by end-user devices?",
+          "What does 'notarization' add beyond code signing on macOS?",
+        ],
+        connections: ["verify-sig", "verify-pkgmgr"]
+      },
+      {
+        id: "verify-pkgmgr", title: "Package Manager Verification",
+        concepts: "apt: GPG signature on Release → hashes in index → hashes match .deb. npm: integrity hashes in lockfile, Sigstore signatures. pip: hash pinning, TUF rolling out. Docker: Cosign/Notary, Content Trust.",
+        prompts: [
+          "Trace the trust chain for an apt package from GPG key to installed .deb.",
+          "Why was npm historically weaker than apt for package verification?",
+          "What does 'npm ci' do differently from 'npm install' for security?",
+        ],
+        connections: ["verify-gpg", "verify-sigstore"]
+      },
+      {
+        id: "verify-gpg", title: "GPG / PGP",
+        concepts: "Decentralized Web of Trust (users sign each other's keys). Used for email encryption (hybrid: asymmetric wraps symmetric), file signing, package signing. Widely criticized: key management UX, no forward secrecy, algorithm complexity, metadata leaks.",
+        prompts: [
+          "Compare the Web of Trust model to PKI — strengths and weaknesses of each.",
+          "Explain hybrid encryption as used in PGP email.",
+          "Why do modern cryptographers recommend against GPG for new projects?",
+        ],
+        connections: ["verify-sig", "verify-sigstore"]
+      },
+      {
+        id: "verify-sigstore", title: "Sigstore (Keyless Signing)",
+        concepts: "Fulcio (issues ephemeral certs via OIDC) + Rekor (transparency log) + Cosign (container signing). Sign by logging in with GitHub/Google → get 10-minute cert → sign → cert expires → log proves it happened. No key management.",
+        prompts: [
+          "How does Sigstore eliminate the need for long-term signing keys?",
+          "What role does the Rekor transparency log play after the ephemeral cert expires?",
+          "Compare the effort of signing a package with GPG vs. Sigstore.",
+        ],
+        connections: ["verify-gpg", "supply-slsa"]
+      },
+    ]
+  },
+  {
+    id: "supply", title: "Supply Chain Security", badge: "badge-supply",
+    topics: [
+      {
+        id: "supply-threats", title: "Supply Chain Threat Model",
+        concepts: "6 attack surfaces: dev workstation, source repo, dependencies, build system, package registry, deployment. SolarWinds: build compromise (source was clean). event-stream: dependency hijacking. Codecov: CI script tampering.",
+        prompts: [
+          "Name the 6 attack surfaces in a software supply chain.",
+          "Why does the SolarWinds attack prove that code review alone is insufficient?",
+          "How does dependency confusion work?",
+        ],
+        connections: ["supply-slsa", "supply-cicd"]
+      },
+      {
+        id: "supply-slsa", title: "SLSA Framework (Levels 0-3)",
+        concepts: "L0: no guarantees. L1: provenance exists. L2: hosted build + signed provenance. L3: hardened, isolated, unforgeable. Provenance = signed statement: 'artifact X built from source Y by builder Z.' Uses in-toto attestation format.",
+        prompts: [
+          "What specifically changes between each SLSA level?",
+          "What does a SLSA provenance attestation contain?",
+          "How does SLSA L3 prevent a SolarWinds-style attack?",
+        ],
+        connections: ["supply-threats", "verify-sigstore"]
+      },
+      {
+        id: "supply-sbom", title: "SBOMs & VEX",
+        concepts: "SBOM: inventory of every component (SPDX or CycloneDX format). VEX: annotates SBOM with exploitability status ('we have log4j but it's unreachable'). Generated at build time, signed, scanned continuously against CVE databases.",
+        prompts: [
+          "How would an SBOM help during a Log4Shell-level vulnerability disclosure?",
+          "What's the difference between SPDX and CycloneDX?",
+          "Why is VEX important for reducing false positive noise?",
+        ],
+        connections: ["supply-slsa", "verify-sigstore"]
+      },
+      {
+        id: "supply-cicd", title: "CI/CD Pipeline Security",
+        concepts: "Attack surfaces: workflow injection, dependency poisoning, compromised runners, over-permissioned tokens, third-party action supply chain. Mitigations: ephemeral runners, OIDC federation, SHA-pinned actions, minimal permissions, approved actions only.",
+        prompts: [
+          "Why is pull_request_target dangerous for fork PRs?",
+          "What's the risk of using 'uses: action@v3' instead of pinning to a commit SHA?",
+          "Design a secure GitHub Actions workflow — what permissions and settings do you set?",
+        ],
+        connections: ["supply-secrets", "supply-threats"]
+      },
+      {
+        id: "supply-secrets", title: "Secrets Management",
+        concepts: "Never in code/images/logs. Use: Vault, cloud KMS, CI secret stores. Modern: OIDC federation (GitHub → AWS, no static keys). Detection: gitleaks (pre-commit), truffleHog (history scan), GitHub Secret Scanning (auto-revoke).",
+        prompts: [
+          "Explain OIDC federation from GitHub Actions to AWS — why is it better than stored access keys?",
+          "Where should secrets never be stored? List all the places.",
+          "What's the difference between prevention (gitleaks) and detection (Secret Scanning)?",
+        ],
+        connections: ["supply-cicd", "git-risks"]
+      },
+    ]
+  },
+  {
+    id: "git", title: "Git & Version Control", badge: "badge-git",
+    topics: [
+      {
+        id: "git-signing", title: "Git Commit & Tag Signing",
+        concepts: "Three methods: GPG, SSH key (simplest), S/MIME (enterprise PKI). commit.gpgsign=true signs all commits. GitHub/GitLab show 'Verified' badge. Branch protection can require signed commits.",
+        prompts: [
+          "Why is git's user.name/user.email insufficient for identity verification?",
+          "Compare GPG vs. SSH signing — when would you choose each?",
+          "How do you set up SSH signing for a team?",
+        ],
+        connections: ["verify-sig", "git-branch"]
+      },
+      {
+        id: "git-integrity", title: "Git's Content-Addressable Storage",
+        concepts: "Every object (blob, tree, commit, tag) is its SHA-1 hash. Commits reference parent hashes = hash chain (like blockchain). Tampering with any historical commit breaks the chain. Transitioning to SHA-256.",
+        prompts: [
+          "How does git's hash chain provide integrity guarantees?",
+          "Why is the SHA-1 → SHA-256 transition happening?",
+          "How does a signed tag anchor the entire history chain?",
+        ],
+        connections: ["git-signing", "git-risks"]
+      },
+      {
+        id: "git-branch", title: "Branch Protection & Code Review",
+        concepts: "Required settings: 2 reviews, signed commits, required CI checks, no force push, no bypass (even admins). CODEOWNERS: require expert review for security paths (crypto/, auth/, .github/workflows/). GitHub Rulesets: org-wide, version-controlled.",
+        prompts: [
+          "Why should CI config files (.github/workflows/) be in CODEOWNERS?",
+          "What's the 'Do not allow bypassing' setting and why should it be enabled?",
+          "How do GitHub Rulesets improve on branch protection rules?",
+        ],
+        connections: ["git-signing", "supply-cicd"]
+      },
+      {
+        id: "git-risks", title: "Git Security Risks",
+        concepts: "Secrets in history, force push (history rewrite), .git directory exposure, malicious hooks (core.hooksPath), submodule hijacking, unsigned commits (identity spoofing).",
+        prompts: [
+          "A secret was committed 3 months ago and deleted in the next commit. Is it safe? Why not?",
+          "How could an exposed .git directory lead to full source code theft?",
+          "How does submodule hijacking work?",
+        ],
+        connections: ["supply-secrets", "git-integrity"]
+      },
+      {
+        id: "org-playbook", title: "Organizational Security Playbook",
+        concepts: "P0 (hours): MFA, branch protection, secret scanning. P1 (day): read-only token defaults, SHA-pinned actions, Dependabot. P2 (days): signed commits, OIDC federation, CODEOWNERS. P3 (week): SLSA provenance, SBOMs, Cosign, admission controllers.",
+        prompts: [
+          "List the P0 items from memory — these should be done on day one.",
+          "Why does the playbook separate prevention (CAA, branch protection) from detection (CT, secret scanning)?",
+          "Design an end-to-end secure pipeline from scratch using everything you've learned.",
+        ],
+        connections: ["supply-cicd", "supply-slsa", "git-branch"]
+      },
+    ]
+  }
+  ,{
+    id: "browser", title: "Browser Security", badge: "badge-browser",
+    topics: [
+      {
+        id: "browser-cors", title: "CORS",
+        concepts: "CORS relaxes the Same-Origin Policy in a controlled way. The server declares which origins may read its responses via Access-Control-Allow-Origin. Simple requests (GET, POST with form content-types) are sent without a preflight. Non-simple requests trigger an OPTIONS preflight. Credentialed requests (cookies) require an explicit non-wildcard origin in ACAO. Common misconfigs: origin reflection, trusting null, overly broad regex.",
+        prompts: [
+          "What is the difference between a simple and a preflighted CORS request?",
+          "Why can't Access-Control-Allow-Origin: * be combined with Access-Control-Allow-Credentials: true?",
+          "Give three examples of CORS misconfiguration that allow full access from any origin.",
+          "Where does CORS fit relative to the Same-Origin Policy?",
+        ],
+        connections: ["browser-sop", "authn-tokens", "tls-sni"]
+      },
+      {
+        id: "browser-csp", title: "Content Security Policy",
+        concepts: "CSP is an HTTP header that tells the browser which sources it may load resources from. A strict CSP prevents inline script execution (killing most XSS). Key directives: script-src (use nonces or hashes, never unsafe-inline), frame-ancestors (prevents clickjacking), base-uri (prevents base tag injection), object-src 'none' (kills Flash/plugins). Bypasses: JSONP on allowlisted domains, open redirects, missing base-uri.",
+        prompts: [
+          "How does a nonce-based CSP prevent XSS even when an attacker injects a script tag?",
+          "What is the difference between unsafe-inline and a nonce in script-src?",
+          "Name three ways a CSP can be bypassed even when deployed.",
+          "What does strict-dynamic do and when would you use it?",
+        ],
+        connections: ["browser-cors", "browser-trusted-types", "browser-iframe"]
+      },
+      {
+        id: "browser-sri", title: "Subresource Integrity",
+        concepts: "SRI allows a page to specify a cryptographic hash of a third-party script or stylesheet. The browser checks the fetched resource matches the hash before executing it. If the CDN is compromised and serves a different file, the hash won't match and the resource is blocked. Requires crossorigin attribute for cross-origin resources. Only works for static (non-dynamic) content.",
+        prompts: [
+          "What problem does SRI solve that HTTPS alone doesn't?",
+          "What is the crossorigin attribute and why is it required for SRI on cross-origin resources?",
+          "What happens if you deploy SRI on a dynamically generated script?",
+        ],
+        connections: ["pki-chain", "supply-chain"]
+      },
+      {
+        id: "browser-cookies", title: "Cookie Security Attributes",
+        concepts: "HttpOnly: JS cannot read the cookie (prevents XSS exfiltration). Secure: only sent over HTTPS. SameSite=Strict: never sent cross-site. SameSite=Lax: sent on top-level navigations but not cross-site POST/fetch (Chrome default). SameSite=None;Secure: sent cross-site (needed for third-party). __Host- prefix: enforces Secure+Path=/+no Domain (prevents cookie tossing from subdomains).",
+        prompts: [
+          "A session cookie has SameSite=Lax. Can an attacker on evil.com forge a POST request that includes it?",
+          "What does __Host- prefix enforce and why does it prevent cookie tossing?",
+          "Why does SameSite=Lax not fully prevent all CSRF attacks?",
+          "What is cookie partitioning (CHIPS) and why was it introduced?",
+        ],
+        connections: ["browser-cors", "authn-tokens", "browser-csp"]
+      },
+      {
+        id: "browser-sop", title: "Same-Origin Policy",
+        concepts: "Two URLs share an origin only if scheme + host + port all match. SOP blocks cross-origin reads (XHR response body, iframe document access, cookie reads) but allows cross-origin writes (form submission, navigation) and embeds (<img>, <script>, <iframe>). SOP prevents reads — not writes. CORS and postMessage are the primary relaxation mechanisms. (document.domain was historically used but is now deprecated and disabled by default in modern browsers.)",
+        prompts: [
+          "Does SOP prevent a cross-site form POST? Explain.",
+          "What three components must match for two URLs to be same-origin?",
+          "What is the difference between same-origin, same-site, and cross-site?",
+          "How does postMessage allow cross-origin communication while maintaining security?",
+        ],
+        connections: ["browser-cors", "browser-csp", "browser-iframe"]
+      },
+      {
+        id: "browser-iframe", title: "iframe Sandboxing & Clickjacking",
+        concepts: "Clickjacking: transparent iframe overlay tricks user into clicking target site. Defences: X-Frame-Options: DENY or CSP frame-ancestors 'none'. The sandbox attribute on iframes restricts capabilities — no scripts, no forms, no same-origin access by default; capabilities added back with tokens. allow-scripts + allow-same-origin together defeats the sandbox — the script can remove the sandbox attribute.",
+        prompts: [
+          "Why is frame-busting JavaScript an unreliable clickjacking defence?",
+          "What is the difference between X-Frame-Options and CSP frame-ancestors?",
+          "What happens when you combine sandbox='allow-scripts allow-same-origin'?",
+          "What tokens would you add to sandbox for a user-generated content preview iframe?",
+        ],
+        connections: ["browser-csp", "browser-sop"]
+      },
+      {
+        id: "browser-trusted-types", title: "Trusted Types & DOM XSS",
+        concepts: "DOM XSS occurs entirely client-side — attacker data flows from a source (location.hash, postMessage) to a dangerous sink (innerHTML, eval). Trusted Types enforces that only objects produced by a policy (not plain strings) can be assigned to dangerous sinks. Enabled via CSP: require-trusted-types-for 'script'. Policies wrap sanitisation logic — DOMPurify.sanitize() returns a TrustedHTML object.",
+        prompts: [
+          "What is the difference between reflected XSS and DOM XSS in terms of where the payload executes?",
+          "Name four dangerous DOM sinks that Trusted Types protects.",
+          "How does a Trusted Types policy differ from just calling DOMPurify directly?",
+          "Why is textContent safe but innerHTML dangerous for user-controlled data?",
+        ],
+        connections: ["browser-csp", "browser-sop"]
+      },
+    ]
+  }
+  ,{
+    id: "appsec", title: "Application Security", badge: "badge-appsec",
+    topics: [
+      {
+        id: "appsec-xss", title: "XSS (Cross-Site Scripting)",
+        concepts: "Reflected XSS: payload in URL, returned immediately in response. Stored XSS: payload saved in DB, served to all visitors. DOM XSS: entirely client-side, source→sink flow in JS. Defence: context-aware output encoding (HTML entity encode for HTML context, JS escape for JS context); CSP with nonces; HttpOnly cookies. Frameworks (React, Angular) auto-escape by default — never use dangerouslySetInnerHTML with user input.",
+        prompts: [
+          "An attacker can inject <script> into a comment field that gets stored in the DB. Which XSS type is this?",
+          "Why does HTML-encoding output prevent XSS in an HTML context but not in a JavaScript string context?",
+          "A page reads document.location.hash and sets element.innerHTML. Is this vulnerable? How do you fix it?",
+          "Why is React generally XSS-safe and what bypasses that protection?",
+        ],
+        connections: ["browser-csp", "browser-trusted-types", "browser-cookies"]
+      },
+      {
+        id: "appsec-sqli", title: "SQL Injection",
+        concepts: "User input concatenated into SQL query allows attackers to alter query logic. In-band: results returned in response. Blind boolean: true/false conditions infer data one bit at a time. Time-based blind: WAITFOR/sleep() as an out-of-band channel. Fix: parameterised queries (prepared statements) — the ONLY reliable defence. ORMs use parameterised queries by default; don't bypass with raw string interpolation.",
+        prompts: [
+          "Why does parameterisation prevent SQL injection while input validation alone does not?",
+          "Describe the difference between in-band and blind time-based SQL injection.",
+          "An ORM method allows a raw() query escape hatch. What risk does this introduce?",
+          "What is second-order SQL injection?",
+        ],
+        connections: ["appsec-ssrf", "authn-passwords"]
+      },
+      {
+        id: "appsec-csrf", title: "CSRF",
+        concepts: "Browser auto-sends cookies on cross-site requests — attacker page can forge state-changing requests. CSRF does not steal data; it performs actions. Defences: SameSite=Strict/Lax cookie attribute (primary modern defence); CSRF token in form (unpredictable, per-session, validated server-side); Double-Submit Cookie; check Origin/Referer headers. SameSite=Lax still allows cross-site GET — don't use GET for state changes.",
+        prompts: [
+          "Explain why SameSite=Strict prevents CSRF but breaks some OAuth flows.",
+          "A form uses a CSRF token but the token is the user's username. Is this secure?",
+          "Can CORS prevent CSRF? Why or why not?",
+          "An API only accepts JSON (application/json). Is it CSRF-safe by default?",
+        ],
+        connections: ["browser-cookies", "authn-tokens", "authn-oauth"]
+      },
+      {
+        id: "appsec-idor", title: "IDOR & Access Control",
+        concepts: "IDOR: application uses user-controlled input to access objects without checking ownership. Horizontal privilege escalation: access another user's data at same privilege level. Vertical: escalate to higher privilege. Fix: always check ownership server-side (WHERE id=? AND user_id=current_user). UUIDs obscure enumeration but are not a security boundary. Centralise access control checks — don't scatter them across route handlers.",
+        prompts: [
+          "What is the difference between horizontal and vertical privilege escalation?",
+          "An API uses UUIDs instead of sequential IDs. Is it now IDOR-safe? Explain.",
+          "How would you test for IDOR in a black-box pentest?",
+          "What is mass assignment and how does it relate to broken access control?",
+        ],
+        connections: ["appsec-ssrf", "authn-oauth", "authn-tokens"]
+      },
+      {
+        id: "appsec-ssrf", title: "SSRF",
+        concepts: "Server fetches attacker-controlled URL — allows probing internal services, reading cloud metadata (169.254.169.254 in AWS/GCP/Azure), accessing internal APIs. Blind SSRF: no response returned, but side effects (DNS lookup, timing) confirm success. Bypasses: IPv6 loopback [::1], decimal IP 2130706433, DNS rebinding, URL parser confusion. Defence: strict allowlist of allowed destinations; block private IP ranges; IMDSv2 in AWS.",
+        prompts: [
+          "What is the AWS EC2 metadata endpoint and why is it a target in SSRF attacks?",
+          "How does DNS rebinding bypass an SSRF allowlist that checks the resolved IP?",
+          "An SSRF filter blocks 127.0.0.1 and localhost. Name three bypass techniques.",
+          "How does IMDSv2 mitigate SSRF against the EC2 metadata service?",
+        ],
+        connections: ["appsec-sqli", "appsec-xxe"]
+      },
+      {
+        id: "appsec-xxe", title: "XXE & Insecure Deserialization",
+        concepts: "XXE: XML parser processes external entity declarations — attacker reads local files (file:///etc/passwd) or performs SSRF via entity URIs. Fix: disable external entities in the XML parser. Insecure deserialization: native serialisation (Java ObjectInputStream, PHP unserialize, Python pickle) executes code during deserialisation via magic methods/gadget chains. Fix: never deserialise untrusted input; use JSON with schema validation.",
+        prompts: [
+          "How does the Billion Laughs attack use XML entity expansion to cause DoS?",
+          "What is a gadget chain in Java deserialization and how does ysoserial exploit it?",
+          "An app receives XML from user uploads. How do you prevent XXE without rejecting XML entirely?",
+          "Why is Python pickle inherently unsafe for untrusted input?",
+        ],
+        connections: ["appsec-ssrf", "supply-chain"]
+      },
+    ]
+  }
+];
+
+// ─── State ───
+let topicNotes = {};
+let topicStatuses = {};
+try {
+  const sn = sessionStorage?.getItem?.('study-notes');
+  if (sn) topicNotes = JSON.parse(sn);
+  const ss = sessionStorage?.getItem?.('study-statuses');
+  if (ss) topicStatuses = JSON.parse(ss);
+} catch(e) {}
+const saveState = () => {
+  try {
+    sessionStorage?.setItem?.('study-notes', JSON.stringify(topicNotes));
+    sessionStorage?.setItem?.('study-statuses', JSON.stringify(topicStatuses));
+  } catch(e) {}
+};
+
+// ─── Render ───
+const mainEl = document.getElementById('main-content');
+const sidebarLinks = document.getElementById('sidebar-links');
+
+let html = `<h1>Study Notes</h1><p class="subtitle">Cryptographic Engineering — Active Learning Tracker</p>`;
+
+function escapeHtml(value) {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+sections.forEach(sec => {
+  // Sidebar
+  sidebarLinks.innerHTML += `<div class="section-label">${sec.title}</div>`;
+  sec.topics.forEach(t => {
+    const status = topicStatuses[t.id] || '';
+    const dotClass = status === 'understood' ? 'done' : status === 'review' ? 'partial' : status === 'confused' ? 'review' : '';
+    sidebarLinks.innerHTML += `<a href="#${t.id}"><span class="progress-dot ${dotClass}" data-sidebar-dot="${t.id}"></span>${t.title}</a>`;
+  });
+
+  // Main content
+  html += `<div class="study-section" id="section-${sec.id}"><h2>${sec.title} <span class="section-badge ${sec.badge}">${sec.topics.length} topics</span></h2>`;
+
+  sec.topics.forEach(t => {
+    const isOpen = topicNotes[t.id] ? 'open' : '';
+    html += `
+      <div class="topic-card ${isOpen}" id="${t.id}">
+        <div class="topic-header" onclick="this.parentElement.classList.toggle('open')">
+          <span class="topic-title">${t.title}</span>
+          <div class="topic-status">
+            <button class="status-btn ${topicStatuses[t.id]==='understood'?'active-understood':''}" onclick="event.stopPropagation();setStatus('${t.id}','understood',this)">✓ Got it</button>
+            <button class="status-btn ${topicStatuses[t.id]==='review'?'active-review':''}" onclick="event.stopPropagation();setStatus('${t.id}','review',this)">⟳ Review</button>
+            <button class="status-btn ${topicStatuses[t.id]==='confused'?'active-confused':''}" onclick="event.stopPropagation();setStatus('${t.id}','confused',this)">? Confused</button>
+          </div>
+        </div>
+        <div class="topic-body">
+          <div class="key-concepts">
+            <div class="kc-title">Key Concepts</div>
+            <p>${t.concepts}</p>
+          </div>
+          <div class="study-prompts">
+            <div class="prompt-label">Test Yourself</div>
+            ${t.prompts.map(p => `<div class="prompt-item">${p}</div>`).join('')}
+          </div>
+          <div class="note-area">
+            <label>Your Notes</label>
+            <textarea placeholder="Write your understanding, questions, insights..." data-topic="${t.id}" oninput="saveNote('${t.id}', this.value)">${escapeHtml(topicNotes[t.id] || '')}</textarea>
+          </div>
+          <div class="connections">
+            <div class="conn-label">Related Topics:</div>
+            ${t.connections.map(c => {
+              const target = sections.flatMap(s => s.topics).find(x => x.id === c);
+              return target ? `<a class="conn-link" href="#${c}">${target.title}</a>` : '';
+            }).join('')}
+          </div>
+        </div>
+      </div>`;
+  });
+
+  html += `</div>`;
+});
+
+mainEl.innerHTML = html;
+
+// ─── Functions ───
+function setStatus(topicId, status, btn) {
+  // Toggle off if already active
+  if (topicStatuses[topicId] === status) {
+    delete topicStatuses[topicId];
+    btn.className = 'status-btn';
+  } else {
+    topicStatuses[topicId] = status;
+    // Clear siblings
+    const parent = btn.parentElement;
+    parent.querySelectorAll('.status-btn').forEach(b => b.className = 'status-btn');
+    btn.className = `status-btn active-${status}`;
+  }
+  saveState();
+  updateDashboard();
+  updateSidebar();
+}
+
+function saveNote(topicId, value) {
+  topicNotes[topicId] = value;
+  saveState();
+  updateDashboard();
+}
+
+function updateSidebar() {
+  sections.flatMap(s => s.topics).forEach(t => {
+    const dot = document.querySelector(`[data-sidebar-dot="${t.id}"]`);
+    if (!dot) return;
+    const status = topicStatuses[t.id] || '';
+    dot.className = 'progress-dot';
+    if (status === 'understood') dot.classList.add('done');
+    else if (status === 'review') dot.classList.add('partial');
+    else if (status === 'confused') dot.classList.add('review');
+  });
+
+  // Update progress
+  const all = sections.flatMap(s => s.topics);
+  const done = all.filter(t => topicStatuses[t.id] === 'understood').length;
+  const pct = Math.round((done / all.length) * 100);
+  document.getElementById('progress-pct').textContent = pct + '%';
+  document.getElementById('progress-fill').style.width = pct + '%';
+}
+
+function updateDashboard() {
+  const all = sections.flatMap(s => s.topics);
+  const understood = all.filter(t => topicStatuses[t.id] === 'understood').length;
+  const review = all.filter(t => topicStatuses[t.id] === 'review').length;
+  const confused = all.filter(t => topicStatuses[t.id] === 'confused').length;
+  const notStarted = all.length - understood - review - confused;
+
+  document.getElementById('stats-grid').innerHTML = `
+    <div class="stat-box stat-green"><div class="stat-num">${understood}</div><div class="stat-label">Understood</div></div>
+    <div class="stat-box stat-yellow"><div class="stat-num">${review}</div><div class="stat-label">Review</div></div>
+    <div class="stat-box stat-red"><div class="stat-num">${confused}</div><div class="stat-label">Confused</div></div>
+    <div class="stat-box stat-dim"><div class="stat-num">${notStarted}</div><div class="stat-label">Not Started</div></div>
+  `;
+
+  // Review list
+  const reviewList = document.getElementById('review-list');
+  const reviewTopics = all.filter(t => topicStatuses[t.id] === 'review');
+  reviewList.innerHTML = reviewTopics.length ? reviewTopics.map(t =>
+    `<div class="review-item" onclick="document.getElementById('${t.id}').scrollIntoView({behavior:'smooth'});document.getElementById('${t.id}').classList.add('open')">
+      <div class="ri-title">${t.title}</div>
+      ${topicNotes[t.id] ? `<div class="ri-note">${escapeHtml(topicNotes[t.id])}</div>` : ''}
+    </div>`
+  ).join('') : '<div style="font-size:12px;color:var(--text-dim);">No topics marked for review yet.</div>';
+
+  // Confused list
+  const confusedList = document.getElementById('confused-list');
+  const confusedTopics = all.filter(t => topicStatuses[t.id] === 'confused');
+  confusedList.innerHTML = confusedTopics.length ? confusedTopics.map(t =>
+    `<div class="review-item" onclick="document.getElementById('${t.id}').scrollIntoView({behavior:'smooth'});document.getElementById('${t.id}').classList.add('open')">
+      <div class="ri-title">${t.title}</div>
+      ${topicNotes[t.id] ? `<div class="ri-note">${escapeHtml(topicNotes[t.id])}</div>` : ''}
+    </div>`
+  ).join('') : '<div style="font-size:12px;color:var(--text-dim);">No topics marked as confused.</div>';
+}
+
+// ─── Export ───
+document.getElementById('export-btn').addEventListener('click', () => {
+  let md = `# Cryptographic Engineering — Study Notes\n\nExported: ${new Date().toLocaleDateString()}\n\n`;
+  const all = sections.flatMap(s => s.topics);
+  const understood = all.filter(t => topicStatuses[t.id] === 'understood').length;
+  md += `**Progress:** ${understood}/${all.length} topics understood\n\n---\n\n`;
+
+  sections.forEach(sec => {
+    md += `## ${sec.title}\n\n`;
+    sec.topics.forEach(t => {
+      const status = topicStatuses[t.id] || 'not started';
+      const icon = status === 'understood' ? '✅' : status === 'review' ? '🔄' : status === 'confused' ? '❓' : '⬜';
+      md += `### ${icon} ${t.title}\n`;
+      md += `**Status:** ${status}\n\n`;
+      md += `**Key Concepts:** ${t.concepts}\n\n`;
+      if (topicNotes[t.id]) {
+        md += `**My Notes:**\n${topicNotes[t.id]}\n\n`;
+      }
+      md += `---\n\n`;
+    });
+  });
+
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `crypto-study-notes-${new Date().toISOString().slice(0,10)}.md`;
+  a.click();
+});
+
+// Init
+updateDashboard();
+updateSidebar();
+</script>
+</body>
+</html>

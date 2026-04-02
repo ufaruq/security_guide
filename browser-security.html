@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Browser Security Model — Cryptographic Engineering</title>
+  <style>
+    :root {
+      --bg: #0a0e17;
+      --surface: #131925;
+      --surface2: #1a2233;
+      --border: #2a3444;
+      --accent: #00d4aa;
+      --accent2: #7c5cfc;
+      --accent3: #ff6b6b;
+      --accent4: #ffd93d;
+      --text: #e0e6ed;
+      --text-dim: #8892a4;
+      --text-bright: #ffffff;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; overflow-x: hidden; }
+
+    nav { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 0; overflow-y: auto; z-index: 100; }
+    nav h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); padding: 0 20px; margin-bottom: 20px; }
+    nav a { display: block; padding: 10px 20px; color: var(--text-dim); text-decoration: none; font-size: 14px; border-left: 3px solid transparent; transition: all 0.2s; }
+    nav a:hover, nav a.active { color: var(--text-bright); background: rgba(0,212,170,0.05); border-left-color: var(--accent); }
+    nav .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 16px 20px 6px; opacity: 0.6; }
+
+    main { margin-left: 260px; max-width: 900px; padding: 40px 60px 100px; }
+    h1 { font-size: 42px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+    .subtitle { font-size: 18px; color: var(--text-dim); margin-bottom: 48px; }
+    h2 { font-size: 28px; font-weight: 700; color: var(--text-bright); margin-top: 64px; margin-bottom: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+    h3 { font-size: 20px; font-weight: 600; color: var(--accent); margin-top: 32px; margin-bottom: 12px; }
+    h4 { font-size: 16px; font-weight: 600; color: var(--accent2); margin-top: 24px; margin-bottom: 8px; }
+    p { margin-bottom: 16px; }
+    a { color: var(--accent); }
+    code { background: var(--surface2); padding: 2px 7px; border-radius: 4px; font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 14px; color: var(--accent4); }
+    pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; overflow-x: auto; font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 13px; line-height: 1.6; margin: 16px 0; color: var(--text); }
+
+    .info-box { border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-size: 14px; }
+    .info-box.warning { background: rgba(255,107,107,0.1); border-left: 3px solid var(--accent3); }
+    .info-box.note { background: rgba(0,212,170,0.08); border-left: 3px solid var(--accent); }
+    .info-box.key { background: rgba(124,92,252,0.1); border-left: 3px solid var(--accent2); }
+    .info-box strong { color: var(--text-bright); }
+
+    table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+    th { background: var(--surface2); padding: 12px 16px; text-align: left; font-weight: 600; color: var(--accent); border-bottom: 2px solid var(--border); }
+    td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+    tr:hover td { background: rgba(0,212,170,0.03); }
+
+    ul, ol { margin: 0 0 16px 24px; }
+    li { margin-bottom: 6px; }
+
+    .defence-list { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+    .defence-list h4 { margin-top: 0; color: var(--accent); }
+    .defence-list li { font-size: 14px; }
+    .defence-list li::marker { color: var(--accent); }
+
+    .refs { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin: 20px 0 8px; font-size: 13px; }
+    .refs-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+    .refs-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+    .refs-label { color: var(--text-dim); font-size: 12px; min-width: 60px; }
+    .refs-row a { color: var(--accent); text-decoration: none; padding: 2px 8px; border: 1px solid rgba(0,212,170,0.25); border-radius: 4px; font-size: 12px; transition: all 0.15s; }
+    .refs-row a:hover { background: rgba(0,212,170,0.1); }
+    .refs-row a.community { color: var(--accent2); border-color: rgba(124,92,252,0.3); }
+    .refs-row a.community:hover { background: rgba(124,92,252,0.1); }
+
+    .attack-box { background: rgba(255,107,107,0.06); border: 1px solid rgba(255,107,107,0.2); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+    .attack-box .attack-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent3); margin-bottom: 8px; font-weight: 600; }
+
+    @media (max-width: 900px) { nav { display: none; } main { margin-left: 0; padding: 24px 20px; } h1 { font-size: 30px; } }
+  </style>
+</head>
+<body>
+
+<nav>
+  <h2>Browser Security</h2>
+
+  <div style="padding:10px 14px 14px; border-bottom:1px solid var(--border); margin-bottom:10px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:8px;">Site</div>
+    <a href="tls-cryptographic-engineering-guide.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.25);border-radius:7px;color:var(--accent);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(0,212,170,0.16)'" onmouseout="this.style.background='rgba(0,212,170,0.08)'">
+      <span style="font-size:16px;">📖</span>
+      <div><div style="font-weight:700;">TLS & Crypto Guide</div><div style="font-size:10px;opacity:0.7;">Full cryptographic reference</div></div>
+    </a>
+    <a href="web-app-security.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.25);border-radius:7px;color:var(--accent3);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(255,107,107,0.16)'" onmouseout="this.style.background='rgba(255,107,107,0.08)'">
+      <span style="font-size:16px;">🔓</span>
+      <div><div style="font-weight:700;">Web App Security</div><div style="font-size:10px;opacity:0.7;">OWASP, injection, XSS & more</div></div>
+    </a>
+    <a href="crypto-study-notes.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,217,61,0.08);border:1px solid rgba(255,217,61,0.25);border-radius:7px;color:var(--accent4);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(255,217,61,0.16)'" onmouseout="this.style.background='rgba(255,217,61,0.08)'">
+      <span style="font-size:16px;">📝</span>
+      <div><div style="font-weight:700;">Study Notes</div><div style="font-size:10px;opacity:0.7;">Active learning tracker</div></div>
+    </a>
+    <a href="crypto-mind-map.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(124,92,252,0.08);border:1px solid rgba(124,92,252,0.25);border-radius:7px;color:var(--accent2);text-decoration:none;font-size:12px;transition:all 0.15s;" onmouseover="this.style.background='rgba(124,92,252,0.16)'" onmouseout="this.style.background='rgba(124,92,252,0.08)'">
+      <span style="font-size:16px;">🗺️</span>
+      <div><div style="font-weight:700;">Mind Map</div><div style="font-size:10px;opacity:0.7;">Interactive concept map</div></div>
+    </a>
+  </div>
+
+  <div class="section-label">Foundations</div>
+  <a href="#sop">Same-Origin Policy</a>
+  <a href="#cors">CORS</a>
+
+  <div class="section-label">Content Policy</div>
+  <a href="#csp">Content Security Policy</a>
+  <a href="#sri">Subresource Integrity</a>
+  <a href="#trusted-types">Trusted Types</a>
+
+  <div class="section-label">Framing & Cookies</div>
+  <a href="#clickjacking">Clickjacking</a>
+  <a href="#cookies">Cookies Deep Dive</a>
+
+  <div class="section-label">Isolation & Metadata</div>
+  <a href="#fetch-metadata">Fetch Metadata Headers</a>
+  <a href="#permissions-policy">Permissions Policy</a>
+  <a href="#coop-coep">Cross-Origin Isolation (COOP/COEP)</a>
+  <a href="#iframe-sandbox">iframe Sandboxing</a>
+
+  <div class="section-label">Side Channels</div>
+  <a href="#spectre">Spectre & Side-Channel Mitigations</a>
+</nav>
+
+<main>
+
+  <h1 id="browser-security">Browser Security Model</h1>
+  <p class="subtitle">Same-Origin Policy, CORS, CSP, cookies, isolation and side-channel mitigations</p>
+  <p>The browser is a complex security boundary. It runs code from dozens of origins simultaneously, enforces access controls between them, and must protect sensitive data even when hosting malicious third-party scripts. Understanding the browser security model means understanding how these boundaries work, where they break, and how to configure them correctly.</p>
+
+  <!-- ===================== SOP ===================== -->
+  <h2 id="sop">Same-Origin Policy</h2>
+
+  <p>The Same-Origin Policy (SOP) is the browser's fundamental security boundary. Two URLs share an origin if and only if they have the same <strong>scheme</strong>, <strong>host</strong>, and <strong>port</strong>. SOP restricts how documents and scripts loaded from one origin can interact with resources from another origin.</p>
+
+  <h3>Origin Comparison</h3>
+  <table>
+    <thead>
+      <tr><th>URL A</th><th>URL B</th><th>Same Origin?</th><th>Reason</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>https://example.com/a</code></td><td><code>https://example.com/b</code></td><td>Yes</td><td>Same scheme, host, port</td></tr>
+      <tr><td><code>https://example.com</code></td><td><code>http://example.com</code></td><td>No</td><td>Different scheme</td></tr>
+      <tr><td><code>https://example.com</code></td><td><code>https://sub.example.com</code></td><td>No</td><td>Different host</td></tr>
+      <tr><td><code>https://example.com:443</code></td><td><code>https://example.com:8443</code></td><td>No</td><td>Different port</td></tr>
+      <tr><td><code>https://example.com</code></td><td><code>https://example.com:443</code></td><td>Yes</td><td>443 is implicit for HTTPS</td></tr>
+    </tbody>
+  </table>
+
+  <h3>What SOP Allows and Blocks</h3>
+  <pre>Allowed cross-origin:
+  - Link navigation (&lt;a href&gt;)
+  - Form submission (POST — though CSRF risk)
+  - Embedding (&lt;img&gt;, &lt;script&gt;, &lt;iframe&gt;, &lt;video&gt;, &lt;link rel="stylesheet"&gt;)
+  - window.open() / window.location navigation
+
+Blocked cross-origin (without CORS):
+  - Reading response body from fetch/XHR
+  - Reading iframe's contentDocument or contentWindow properties
+  - Reading cookies, localStorage, sessionStorage
+  - Calling methods on another origin's window (except postMessage)</pre>
+
+  <div class="info-box note">
+    <strong>SOP blocks reads, not writes.</strong> An attacker page can send a POST request to your banking site (CSRF) — SOP won't stop that. SOP only prevents the attacker from reading the response.
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy" target="_blank">MDN: Same-origin policy</a>
+      <a href="https://html.spec.whatwg.org/multipage/browsers.html#origin" target="_blank">WHATWG HTML Spec</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/cors/same-origin-policy" target="_blank" class="community">PortSwigger</a>
+      <a href="https://web.dev/articles/same-origin-policy" target="_blank" class="community">web.dev</a>
+    </div>
+  </div>
+
+  <!-- ===================== CORS ===================== -->
+  <h2 id="cors">CORS (Cross-Origin Resource Sharing)</h2>
+
+  <p>CORS is a controlled relaxation of SOP. Servers opt-in to allowing specific cross-origin reads by including <code>Access-Control-Allow-*</code> response headers. The browser enforces these headers — they are not accessible to client-side code.</p>
+
+  <h3>Simple vs Preflighted Requests</h3>
+  <pre>Simple request criteria (no preflight):
+  - Method: GET, HEAD, POST
+  - Content-Type: application/x-www-form-urlencoded | multipart/form-data | text/plain
+  - No custom headers
+
+Preflighted request: browser sends OPTIONS first
+  - Methods: PUT, DELETE, PATCH, or custom
+  - Content-Type: application/json (or other non-simple)
+  - Any custom header (e.g., Authorization, X-API-Key)
+
+OPTIONS preflight exchange:
+  Request:
+    OPTIONS /api/data HTTP/1.1
+    Origin: https://app.example.com
+    Access-Control-Request-Method: DELETE
+    Access-Control-Request-Headers: Authorization
+
+  Response (server grants permission):
+    Access-Control-Allow-Origin: https://app.example.com
+    Access-Control-Allow-Methods: GET, POST, DELETE
+    Access-Control-Allow-Headers: Authorization
+    Access-Control-Max-Age: 86400</pre>
+
+  <!-- CORS Preflight Sequence Diagram -->
+  <div style="margin:24px 0; padding:24px; background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow-x:auto;">
+    <h4 style="margin-top:0; color:var(--accent); margin-bottom:16px; text-align:center;">CORS Preflight Sequence</h4>
+    <div style="display:flex; justify-content:center; gap:0; position:relative; min-width:520px;">
+      <!-- Browser column -->
+      <div style="width:180px; text-align:center; position:relative; z-index:1;">
+        <div style="background:var(--accent); color:var(--bg); font-weight:700; padding:8px 16px; border-radius:6px; margin-bottom:12px; font-size:14px;">Browser</div>
+        <div style="border-left:2px dashed var(--border); height:460px; margin:0 auto; width:0;"></div>
+      </div>
+      <!-- Arrows area -->
+      <div style="flex:1; min-width:160px; max-width:280px; position:relative;">
+        <!-- Arrow 1: OPTIONS request -->
+        <div style="position:absolute; top:48px; left:0; right:0;">
+          <div style="text-align:center; font-size:11px; color:var(--accent4); margin-bottom:2px; font-family:'JetBrains Mono','Fira Code',monospace;">OPTIONS /api/data</div>
+          <div style="text-align:center; font-size:10px; color:var(--text-dim); margin-bottom:2px;">Origin: https://app.com</div>
+          <div style="text-align:center; font-size:10px; color:var(--text-dim); margin-bottom:4px;">Access-Control-Request-Method: PUT</div>
+          <div style="height:2px; background:var(--accent); position:relative;">
+            <div style="position:absolute; right:-4px; top:-4px; width:0; height:0; border-left:8px solid var(--accent); border-top:5px solid transparent; border-bottom:5px solid transparent;"></div>
+          </div>
+        </div>
+        <!-- Arrow 2: 204 response -->
+        <div style="position:absolute; top:158px; left:0; right:0;">
+          <div style="text-align:center; font-size:11px; color:var(--accent4); margin-bottom:2px; font-family:'JetBrains Mono','Fira Code',monospace;">204 No Content</div>
+          <div style="text-align:center; font-size:10px; color:var(--text-dim); margin-bottom:2px;">Access-Control-Allow-Origin: https://app.com</div>
+          <div style="text-align:center; font-size:10px; color:var(--text-dim); margin-bottom:2px;">Access-Control-Allow-Methods: PUT</div>
+          <div style="text-align:center; font-size:10px; color:var(--text-dim); margin-bottom:4px;">Access-Control-Max-Age: 86400</div>
+          <div style="height:2px; background:var(--accent2); position:relative;">
+            <div style="position:absolute; left:-4px; top:-4px; width:0; height:0; border-right:8px solid var(--accent2); border-top:5px solid transparent; border-bottom:5px solid transparent;"></div>
+          </div>
+        </div>
+        <!-- Arrow 3: PUT request -->
+        <div style="position:absolute; top:300px; left:0; right:0;">
+          <div style="text-align:center; font-size:11px; color:var(--accent4); margin-bottom:2px; font-family:'JetBrains Mono','Fira Code',monospace;">PUT /api/data</div>
+          <div style="text-align:center; font-size:10px; color:var(--text-dim); margin-bottom:4px;">Origin: https://app.com</div>
+          <div style="height:2px; background:var(--accent); position:relative;">
+            <div style="position:absolute; right:-4px; top:-4px; width:0; height:0; border-left:8px solid var(--accent); border-top:5px solid transparent; border-bottom:5px solid transparent;"></div>
+          </div>
+        </div>
+        <!-- Arrow 4: 200 response -->
+        <div style="position:absolute; top:380px; left:0; right:0;">
+          <div style="text-align:center; font-size:11px; color:var(--accent4); margin-bottom:2px; font-family:'JetBrains Mono','Fira Code',monospace;">200 OK</div>
+          <div style="text-align:center; font-size:10px; color:var(--text-dim); margin-bottom:4px;">Access-Control-Allow-Origin: https://app.com</div>
+          <div style="height:2px; background:var(--accent2); position:relative;">
+            <div style="position:absolute; left:-4px; top:-4px; width:0; height:0; border-right:8px solid var(--accent2); border-top:5px solid transparent; border-bottom:5px solid transparent;"></div>
+          </div>
+        </div>
+        <!-- Phase labels -->
+        <div style="position:absolute; top:120px; right:-60px; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--accent3); font-weight:600; writing-mode:vertical-rl;">Preflight</div>
+        <div style="position:absolute; top:330px; right:-60px; font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--accent); font-weight:600; writing-mode:vertical-rl;">Actual</div>
+      </div>
+      <!-- Server column -->
+      <div style="width:180px; text-align:center; position:relative; z-index:1;">
+        <div style="background:var(--accent2); color:var(--text-bright); font-weight:700; padding:8px 16px; border-radius:6px; margin-bottom:12px; font-size:14px;">Server</div>
+        <div style="border-left:2px dashed var(--border); height:460px; margin:0 auto; width:0;"></div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Credentialed Requests</h3>
+  <p>Cookies sent cross-origin require explicit opt-in on both client and server.</p>
+  <pre>// Client must explicitly request credentials
+fetch('https://api.example.com/data', {
+  credentials: 'include'  // sends cookies
+});
+
+// Server MUST respond with explicit origin (not wildcard) + allow-credentials
+// Access-Control-Allow-Origin: https://app.example.com   ← exact origin
+// Access-Control-Allow-Credentials: true
+// Access-Control-Allow-Origin: *  ← INVALID for credentialed requests</pre>
+
+  <h3>Common CORS Misconfigurations</h3>
+  <div class="attack-box">
+    <div class="attack-label">Attack Examples</div>
+    <pre>// 1. Origin reflection: server echoes back whatever Origin header is sent
+// Vulnerable server code:
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin);  // DANGEROUS
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
+// Attacker from any origin gets full access including cookies
+
+// 2. Wildcard + credentials (browser actually blocks this, but config intent is wrong)
+// Access-Control-Allow-Origin: *
+// Access-Control-Allow-Credentials: true  ← browser rejects this combination
+
+// 3. Trusting null origin (sandbox iframes send Origin: null)
+// Access-Control-Allow-Origin: null  ← dangerous
+// Exploited with: &lt;iframe sandbox="allow-scripts" srcdoc="...fetch with credentials..."&gt;
+
+// 4. Overly broad origin allowlist with substring check
+// Vulnerable: if (origin.includes('example.com')) allow
+// Bypassed with: https://evil-example.com or https://example.com.attacker.com
+
+// 5. Trusting all subdomains: /^https:\/\/.*\.example\.com$/
+// Bypassed if any subdomain is XSS-vulnerable</pre>
+  </div>
+
+  <h3>Correct CORS Configuration</h3>
+  <pre>const ALLOWED_ORIGINS = new Set([
+  'https://app.example.com',
+  'https://admin.example.com'
+]);
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (ALLOWED_ORIGINS.has(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Vary', 'Origin');  // Important for caching
+    res.header('Access-Control-Allow-Credentials', 'true');
+  }
+  next();
+});</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS" target="_blank">MDN: CORS</a>
+      <a href="https://fetch.spec.whatwg.org/#cors-protocol" target="_blank">Fetch Spec</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/cors" target="_blank" class="community">PortSwigger</a>
+      <a href="https://web.dev/articles/cross-origin-resource-sharing" target="_blank" class="community">web.dev</a>
+    </div>
+  </div>
+
+  <!-- ===================== CSP ===================== -->
+  <h2 id="csp">Content Security Policy (CSP)</h2>
+
+  <p>CSP is an HTTP response header that tells the browser which sources it may load resources from. It's the most powerful XSS mitigation available — even if an attacker injects a <code>&lt;script&gt;</code> tag, CSP prevents it from executing.</p>
+
+  <h3>Directive Reference</h3>
+  <table>
+    <thead>
+      <tr><th>Directive</th><th>Controls</th><th>Example value</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>default-src</code></td><td>Fallback for all resource types</td><td><code>'self'</code></td></tr>
+      <tr><td><code>script-src</code></td><td>JavaScript</td><td><code>'self' 'nonce-abc123'</code></td></tr>
+      <tr><td><code>style-src</code></td><td>CSS</td><td><code>'self' 'unsafe-inline'</code></td></tr>
+      <tr><td><code>img-src</code></td><td>Images</td><td><code>'self' data: https:</code></td></tr>
+      <tr><td><code>connect-src</code></td><td>fetch, XHR, WebSocket</td><td><code>'self' https://api.example.com</code></td></tr>
+      <tr><td><code>font-src</code></td><td>Web fonts</td><td><code>'self' https://fonts.gstatic.com</code></td></tr>
+      <tr><td><code>frame-src</code></td><td><code>&lt;iframe&gt;</code> sources</td><td><code>'none'</code></td></tr>
+      <tr><td><code>frame-ancestors</code></td><td>Who can embed this page</td><td><code>'none'</code> or <code>'self'</code></td></tr>
+      <tr><td><code>object-src</code></td><td><code>&lt;object&gt;</code>, <code>&lt;embed&gt;</code>, and plugin content (Flash reached end-of-life December 31, 2020 and is no longer supported by any major browser; the directive remains important for blocking other plugin types, e.g., PDFs rendered via <code>&lt;object&gt;</code>)</td><td><code>'none'</code></td></tr>
+      <tr><td><code>base-uri</code></td><td><code>&lt;base&gt;</code> element</td><td><code>'self'</code></td></tr>
+      <tr><td><code>form-action</code></td><td>Form submission targets</td><td><code>'self'</code></td></tr>
+      <tr><td><code>report-to</code></td><td>CSP violation endpoint</td><td><code>"csp-endpoint"</code></td></tr>
+      <tr><td><code>upgrade-insecure-requests</code></td><td>Upgrades HTTP to HTTPS</td><td>(no value)</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Nonce-based CSP (Recommended)</h3>
+  <pre>&lt;!-- Server generates a fresh cryptographic nonce per request --&gt;
+&lt;!-- Response header: Content-Security-Policy: script-src 'nonce-r4nd0mB4se64==' --&gt;
+
+&lt;!-- Only scripts with the matching nonce attribute execute --&gt;
+&lt;script nonce="r4nd0mB4se64=="&gt;
+  // This runs
+  console.log('Allowed script');
+&lt;/script&gt;
+
+&lt;!-- Injected scripts (XSS) have no nonce and are blocked --&gt;
+&lt;script&gt;alert(1)&lt;/script&gt;  &lt;!-- CSP blocks this --&gt;</pre>
+
+  <!-- CSP Nonce Flow Diagram -->
+  <div style="margin:24px 0; padding:24px; background:var(--surface); border:1px solid var(--border); border-radius:8px; overflow-x:auto;">
+    <h4 style="margin-top:0; color:var(--accent); margin-bottom:20px; text-align:center;">CSP Nonce Flow</h4>
+    <div style="display:flex; flex-direction:column; gap:12px; align-items:center; min-width:400px;">
+      <!-- Step 1 -->
+      <div style="display:flex; align-items:center; gap:12px; width:100%; max-width:640px;">
+        <div style="background:var(--accent); color:var(--bg); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0;">1</div>
+        <div style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:6px; padding:12px 16px;">
+          <div style="font-size:13px; font-weight:600; color:var(--text-bright);">Server generates random nonce</div>
+          <div style="font-size:12px; color:var(--text-dim); font-family:'JetBrains Mono','Fira Code',monospace; margin-top:4px;">nonce = "r4nd0mB4se64==" (unique per request)</div>
+        </div>
+      </div>
+      <!-- Arrow -->
+      <div style="width:2px; height:12px; background:var(--accent); margin:0 0 0 14px; align-self:flex-start; margin-left:calc(50% - 1px);"></div>
+      <!-- Step 2 -->
+      <div style="display:flex; align-items:center; gap:12px; width:100%; max-width:640px;">
+        <div style="background:var(--accent); color:var(--bg); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0;">2</div>
+        <div style="flex:1; display:flex; gap:8px; flex-wrap:wrap;">
+          <div style="flex:1; min-width:180px; background:var(--surface2); border:1px solid var(--accent); border-radius:6px; padding:12px 16px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:4px;">CSP Header</div>
+            <div style="font-size:11px; color:var(--text); font-family:'JetBrains Mono','Fira Code',monospace;">script-src 'nonce-r4nd0mB4se64=='</div>
+          </div>
+          <div style="flex:1; min-width:180px; background:var(--surface2); border:1px solid var(--accent2); border-radius:6px; padding:12px 16px;">
+            <div style="font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--accent2); margin-bottom:4px;">Script Tag</div>
+            <div style="font-size:11px; color:var(--text); font-family:'JetBrains Mono','Fira Code',monospace;">&lt;script nonce="r4nd0mB4se64=="&gt;</div>
+          </div>
+        </div>
+      </div>
+      <!-- Arrow -->
+      <div style="width:2px; height:12px; background:var(--accent); margin:0; align-self:center;"></div>
+      <!-- Step 3: Browser comparison -->
+      <div style="display:flex; align-items:stretch; gap:12px; width:100%; max-width:640px;">
+        <div style="background:var(--accent2); color:var(--text-bright); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0; align-self:center;">3</div>
+        <div style="flex:1; display:flex; gap:12px; flex-wrap:wrap;">
+          <!-- Match case -->
+          <div style="flex:1; min-width:180px; background:rgba(0,212,170,0.1); border:1px solid var(--accent); border-radius:6px; padding:12px 16px; text-align:center;">
+            <div style="font-size:12px; font-weight:600; color:var(--accent); margin-bottom:4px;">Nonce matches</div>
+            <div style="font-size:20px; margin-bottom:4px;">&#10003;</div>
+            <div style="font-size:12px; color:var(--accent); font-weight:600;">Script executes</div>
+          </div>
+          <!-- No match case -->
+          <div style="flex:1; min-width:180px; background:rgba(255,107,107,0.1); border:1px solid var(--accent3); border-radius:6px; padding:12px 16px; text-align:center;">
+            <div style="font-size:12px; font-weight:600; color:var(--accent3); margin-bottom:4px;">No nonce / wrong nonce</div>
+            <div style="font-size:20px; margin-bottom:4px;">&#10007;</div>
+            <div style="font-size:12px; color:var(--accent3); font-weight:600;">Script blocked</div>
+          </div>
+        </div>
+      </div>
+      <!-- Arrow -->
+      <div style="width:2px; height:12px; background:var(--accent3); margin:0; align-self:center;"></div>
+      <!-- Step 4 -->
+      <div style="display:flex; align-items:center; gap:12px; width:100%; max-width:640px;">
+        <div style="background:var(--accent3); color:var(--text-bright); width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:14px; flex-shrink:0;">4</div>
+        <div style="flex:1; background:rgba(255,107,107,0.08); border:1px solid var(--accent3); border-radius:6px; padding:12px 16px;">
+          <div style="font-size:13px; font-weight:600; color:var(--accent3);">Injected scripts (XSS) have no nonce</div>
+          <div style="font-size:12px; color:var(--text-dim); margin-top:4px;">Attacker cannot guess the nonce (random, changes each request) -- their injected <code style="font-size:11px;">&lt;script&gt;alert(1)&lt;/script&gt;</code> is blocked.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Hash-based CSP (for Static Inline Scripts)</h3>
+  <pre>&lt;!-- Content-Security-Policy: script-src 'sha256-qznLcsROx4GACP2dm0UCKCzCG+HiZ1guq6ZZDob/Tng=' --&gt;
+&lt;!-- The hash is SHA-256 of the exact script content (base64 encoded) --&gt;
+&lt;script&gt;alert('Hello, World.');&lt;/script&gt;</pre>
+
+  <h3>strict-dynamic</h3>
+  <pre>Allows scripts loaded by a trusted nonce/hash script to load further scripts.
+Useful for webpack bundles, SPAs.
+Content-Security-Policy: script-src 'nonce-abc123' 'strict-dynamic'</pre>
+
+  <h3>Common CSP Bypasses</h3>
+  <div class="attack-box">
+    <div class="attack-label">Bypass Patterns</div>
+    <pre>1. JSONP endpoints on allowlisted domains
+   Bypass: &lt;script src="https://allowed.com/jsonp?callback=alert(1)"&gt;
+   Fix: Remove JSONP endpoints; use Fetch + CORS instead
+
+2. open redirect on allowlisted domain
+   Bypass: &lt;script src="https://allowed.com/redirect?url=//attacker.com/evil.js"&gt;
+   Fix: Don't allowlist domains you don't fully control
+
+3. Angular/template injection (if ng-app is present with 'unsafe-eval')
+   Fix: Never use 'unsafe-eval'; disable client-side template compilation in prod
+
+4. Missing base-uri: attacker injects &lt;base href="https://attacker.com/"&gt;
+   Fix: Always include base-uri 'self' or base-uri 'none'
+
+5. 'unsafe-inline' negates script-src protection
+   Fix: Use nonces or hashes instead
+
+6. data: URI in script-src
+   Bypass: &lt;script src="data:,alert(1)"&gt;
+   Fix: Never allow data: in script-src</pre>
+  </div>
+
+  <h3>Report-Only Mode</h3>
+  <pre>Content-Security-Policy-Report-Only: default-src 'self'; report-to csp-violations
+Reporting-Endpoints: csp-violations="https://csp-report.example.com/csp"</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP" target="_blank">MDN: CSP</a>
+      <a href="https://www.w3.org/TR/CSP3/" target="_blank">W3C CSP3 Spec</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Content_Security_Policy_Cheat_Sheet.html" target="_blank">OWASP Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://csp-evaluator.withgoogle.com/" target="_blank" class="community">CSP Evaluator</a>
+      <a href="https://portswigger.net/web-security/cross-site-scripting/content-security-policy" target="_blank" class="community">PortSwigger</a>
+      <a href="https://web.dev/articles/csp" target="_blank" class="community">web.dev</a>
+    </div>
+  </div>
+
+  <!-- ===================== SRI ===================== -->
+  <h2 id="sri">Subresource Integrity (SRI)</h2>
+
+  <p>When loading third-party scripts or stylesheets from a CDN, SRI verifies the fetched file matches a cryptographic hash you specify. If the CDN is compromised and serves a different file, the browser refuses to execute it.</p>
+
+  <pre>&lt;!-- SRI attribute: base64-encoded SHA-384 hash of the expected file content --&gt;
+&lt;script
+  src="https://cdn.example.com/library/v1.2.3/lib.min.js"
+  integrity="sha384-oqVuAfXRKap7fdgcCY5uykM6+R9GqQ8K/ux6WldDs4LUbv7EFsXXB3lBtSMXeGv"
+  crossorigin="anonymous"&gt;
+&lt;/script&gt;
+
+&lt;!-- Generate hash:
+  openssl dgst -sha384 -binary lib.min.js | openssl base64 -A
+  or: shasum -a 384 lib.min.js | awk '{print $1}' | xxd -r -p | base64
+  or: use https://www.srihash.org/
+--&gt;
+
+&lt;!-- crossorigin="anonymous": required to enforce SRI for cross-origin resources
+     Without it, browser skips SRI for cross-origin resources --&gt;
+
+&lt;!-- Also works for stylesheets --&gt;
+&lt;link rel="stylesheet"
+  href="https://cdn.example.com/styles.css"
+  integrity="sha384-..."
+  crossorigin="anonymous"&gt;</pre>
+
+  <h3>Limitations</h3>
+  <ul>
+    <li>SRI only works for static files — it breaks on dynamically generated responses</li>
+    <li>Cannot be used with Service Workers loading cross-origin scripts</li>
+    <li>Versioned CDN URLs are critical — update hash when updating version</li>
+  </ul>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity" target="_blank">MDN: SRI</a>
+      <a href="https://www.w3.org/TR/SRI/" target="_blank">W3C SRI Spec</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://www.srihash.org/" target="_blank" class="community">SRI Hash Generator</a>
+      <a href="https://web.dev/articles/subresource-integrity" target="_blank" class="community">web.dev</a>
+    </div>
+  </div>
+
+  <!-- ===================== Trusted Types ===================== -->
+  <h2 id="trusted-types">Trusted Types</h2>
+
+  <p>Trusted Types is a browser API that can significantly reduce the risk of DOM XSS by restricting which values can be assigned to dangerous DOM sinks. When Trusted Types is enforced via CSP, any code that tries to set <code>innerHTML</code>, <code>eval</code>, <code>document.write</code>, or similar sinks with a plain string will throw an exception.</p>
+
+  <div class="info-box warning">
+    <strong>Browser support caveat:</strong> As of 2026, Trusted Types is supported in Chromium-based browsers (Chrome, Edge) only. Firefox and Safari do not yet support it. In unsupported browsers, the <code>require-trusted-types-for</code> CSP directive is silently ignored, so Trusted Types alone cannot be relied upon as a universal defence — it should be layered with other mitigations (e.g., a sanitisation library) for full coverage.
+  </div>
+
+  <pre>// Enforcement via CSP:
+// Content-Security-Policy: require-trusted-types-for 'script'; trusted-types default
+
+// Without Trusted Types — any string can go to a dangerous sink:
+element.innerHTML = userInput;  // XSS possible
+
+// With Trusted Types enforcement:
+element.innerHTML = userInput;  // Throws TypeError: TrustedHTML required
+
+// Create a Trusted Types policy that sanitises before assignment:
+const policy = trustedTypes.createPolicy('default', {
+  createHTML: (input) =&gt; DOMPurify.sanitize(input),  // sanitise first
+  createScriptURL: (url) =&gt; {
+    if (new URL(url).hostname === 'cdn.example.com') return url;
+    throw new Error('Untrusted script URL');
+  }
+});
+
+// Now use the policy — produces a TrustedHTML object, not a plain string:
+element.innerHTML = policy.createHTML(userInput);  // Safe
+
+// Dangerous sinks that Trusted Types covers:
+// innerHTML, outerHTML, document.write(), document.writeln()
+// eval(), Function(), setTimeout(string), setInterval(string)
+// script.src, script.text, iframe.srcdoc
+// location.href, location.assign() with javascript: URLs</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy/trusted-types" target="_blank">MDN: Trusted Types</a>
+      <a href="https://w3c.github.io/trusted-types/dist/spec/" target="_blank">W3C Spec</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://web.dev/trusted-types/" target="_blank" class="community">web.dev</a>
+      <a href="https://portswigger.net/research/bypassing-csp-with-policy-injection" target="_blank" class="community">PortSwigger Research</a>
+    </div>
+  </div>
+
+  <!-- ===================== Clickjacking ===================== -->
+  <h2 id="clickjacking">Clickjacking</h2>
+
+  <p>Clickjacking embeds the target site in a transparent <code>&lt;iframe&gt;</code> overlaid on a decoy page. Victims click buttons on the transparent target while believing they click the decoy. Effective against any page with consequential button clicks.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Structure</div>
+    <pre>&lt;!-- Attacker page structure --&gt;
+&lt;style&gt;
+  #victim-frame {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    opacity: 0.0001;   /* invisible but clickable */
+    z-index: 2;
+    /* position adjusted so the dangerous button aligns with decoy button */
+    transform: translateY(-300px);
+  }
+  #decoy-button {
+    position: fixed;
+    top: 300px; left: 200px;
+    z-index: 1;
+  }
+&lt;/style&gt;
+&lt;iframe id="victim-frame" src="https://victim.com/account/settings"&gt;&lt;/iframe&gt;
+&lt;button id="decoy-button"&gt;Click to claim your prize!&lt;/button&gt;</pre>
+  </div>
+
+  <!-- Clickjacking Visual Overlay Diagram -->
+  <div style="margin:24px 0; padding:24px; background:var(--surface); border:1px solid var(--border); border-radius:8px;">
+    <h4 style="margin-top:0; color:var(--accent); margin-bottom:16px; text-align:center;">Clickjacking: Layered Attack Visualization</h4>
+    <div style="display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; justify-content:center;">
+      <!-- The layered view -->
+      <div style="position:relative; width:280px; height:200px;">
+        <!-- Bottom layer: attacker page -->
+        <div style="position:absolute; top:0; left:0; width:280px; height:200px; background:linear-gradient(135deg, #1a1a2e, #16213e); border:2px solid var(--accent); border-radius:8px; padding:16px; z-index:1;">
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--accent); margin-bottom:8px; font-weight:600;">Bottom Layer: Attacker's Page</div>
+          <div style="text-align:center; margin-top:48px;">
+            <div style="display:inline-block; background:linear-gradient(135deg, #00d4aa, #00b894); color:#0a0e17; font-weight:700; padding:12px 24px; border-radius:6px; font-size:14px; cursor:pointer;">Win a Prize!</div>
+          </div>
+        </div>
+        <!-- Top layer: target site (semi-transparent) -->
+        <div style="position:absolute; top:10px; left:10px; width:280px; height:200px; background:rgba(255,107,107,0.12); border:2px dashed var(--accent3); border-radius:8px; padding:16px; z-index:2; opacity:0.7;">
+          <div style="font-size:10px; text-transform:uppercase; letter-spacing:1px; color:var(--accent3); margin-bottom:8px; font-weight:600;">Top Layer: Target Site (opacity: 0.0001)</div>
+          <div style="text-align:center; margin-top:38px;">
+            <div style="display:inline-block; background:rgba(255,107,107,0.3); border:1px solid var(--accent3); color:var(--accent3); font-weight:700; padding:12px 24px; border-radius:6px; font-size:14px;">Transfer $1000</div>
+          </div>
+        </div>
+      </div>
+      <!-- Legend -->
+      <div style="min-width:180px;">
+        <div style="font-size:13px; color:var(--text-bright); font-weight:600; margin-bottom:12px;">How it works:</div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <div style="width:12px; height:12px; background:var(--accent); border-radius:2px; flex-shrink:0;"></div>
+          <span style="font-size:12px; color:var(--text);">Victim sees "Win a Prize!"</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <div style="width:12px; height:12px; background:var(--accent3); border-radius:2px; flex-shrink:0;"></div>
+          <span style="font-size:12px; color:var(--text);">Actually clicks "Transfer $1000"</span>
+        </div>
+        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+          <div style="width:12px; height:12px; background:var(--accent2); border-radius:2px; flex-shrink:0;"></div>
+          <span style="font-size:12px; color:var(--text);">Target iframe is near-invisible</span>
+        </div>
+        <div style="margin-top:12px; font-size:11px; color:var(--text-dim); padding:8px; background:var(--surface2); border-radius:4px;">
+          The attacker positions the transparent target site iframe so that its real button aligns perfectly with the fake decoy button underneath.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h3>Defence</h3>
+  <pre># X-Frame-Options (older, widely supported)
+X-Frame-Options: DENY          # no framing allowed anywhere
+X-Frame-Options: SAMEORIGIN    # only same origin can frame
+
+# CSP frame-ancestors (supersedes X-Frame-Options, supports multiple origins)
+Content-Security-Policy: frame-ancestors 'none';
+Content-Security-Policy: frame-ancestors 'self' https://trusted-parent.example.com;
+
+# Both headers are commonly set for broad compatibility</pre>
+
+  <h3>Frame-busting JavaScript (Unreliable)</h3>
+  <pre>// This is bypassable — attacker can sandbox the iframe to disable JS
+if (window.top !== window.self) {
+  window.top.location = window.self.location;  // Breakout attempt
+}
+// Bypass: &lt;iframe sandbox="allow-scripts allow-same-origin" src="victim"&gt;
+// The sandbox attribute disables navigation from inner frame
+// Use X-Frame-Options / CSP instead — headers cannot be bypassed</pre>
+
+  <div class="info-box warning">
+    <strong>JavaScript frame-busting is unreliable.</strong> Attackers can use <code>sandbox="allow-scripts"</code> on the embedding iframe to prevent the inner page from navigating the top-level context. Always use HTTP headers.
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/X-Frame-Options" target="_blank">MDN: X-Frame-Options</a>
+      <a href="https://owasp.org/www-community/attacks/Clickjacking" target="_blank">OWASP</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/clickjacking" target="_blank" class="community">PortSwigger</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html" target="_blank" class="community">OWASP Cheat Sheet</a>
+    </div>
+  </div>
+
+  <!-- ===================== Cookies ===================== -->
+  <h2 id="cookies">Cookies Deep Dive</h2>
+
+  <p>Cookies are the primary session mechanism on the web. Their security attributes control when they're sent, whether JS can read them, and how they behave in cross-site contexts. Misconfigured cookies are a leading cause of session hijacking and CSRF.</p>
+
+  <h3>Cookie Security Attributes</h3>
+  <table>
+    <thead>
+      <tr><th>Attribute</th><th>Effect</th><th>When to use</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>Secure</code></td><td>Cookie only sent over HTTPS</td><td>Always for session cookies in production</td></tr>
+      <tr><td><code>HttpOnly</code></td><td>JavaScript cannot read this cookie via <code>document.cookie</code></td><td>Always — prevents XSS exfiltration</td></tr>
+      <tr><td><code>SameSite=Strict</code></td><td>Cookie not sent on any cross-site request</td><td>Maximum CSRF protection; breaks some OAuth flows</td></tr>
+      <tr><td><code>SameSite=Lax</code></td><td>Cookie sent on top-level GET navigations; not on cross-site POST/fetch</td><td>Good default since Chrome 80; allows SSO redirects</td></tr>
+      <tr><td><code>SameSite=None; Secure</code></td><td>Cookie sent cross-site; MUST have Secure attribute</td><td>Third-party cookies, embedding in iframes</td></tr>
+      <tr><td><code>Domain=.example.com</code></td><td>Cookie shared across all subdomains</td><td>Only when subdomains need shared session</td></tr>
+      <tr><td><code>Path=/api</code></td><td>Cookie only sent for requests to /api prefix</td><td>Isolate cookies to specific paths</td></tr>
+      <tr><td><code>Max-Age=3600</code></td><td>Cookie expires after N seconds</td><td>Session persistence</td></tr>
+      <tr><td><code>Expires=...</code></td><td>Absolute expiry date</td><td>Persistent cookies</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Cookie Prefixes</h3>
+  <pre># __Host- prefix enforces:
+#   - Secure attribute required
+#   - Path=/ required (cannot be Path=/api)
+#   - No Domain attribute (only exact host, not subdomains)
+Set-Cookie: __Host-session=abc123; Secure; Path=/; HttpOnly; SameSite=Lax
+
+# __Secure- prefix enforces:
+#   - Secure attribute required
+# (weaker than __Host-)
+Set-Cookie: __Secure-token=xyz; Secure; Path=/; HttpOnly
+
+# Why this matters: cookie tossing attack
+# Subdomain (sub.example.com) sets a plain session cookie for Domain=.example.com
+# This overwrites the main site's session cookie — __Host- prefix prevents this</pre>
+
+  <h3>Cookie Jar Overflow / Tossing</h3>
+  <pre>Browsers have per-domain cookie limits (~180 cookies in Chrome).
+Attacker fills up the jar with junk cookies → legitimate session cookie evicted.
+Or: attacker sets a shadowing cookie from a subdomain to override main site cookie.
+
+Mitigations:
+  - __Host- prefix prevents cross-subdomain overwriting
+  - Cookie partitioning (CHIPS) isolates third-party cookies per top-level site</pre>
+
+  <h3>CHIPS (Cookies Having Independent Partitioned State)</h3>
+  <pre># Third-party cookie that is partitioned per top-level site
+Set-Cookie: embed-session=abc; Secure; Path=/; SameSite=None; Partitioned
+
+# The same cookie set on embed.widget.com will have DIFFERENT values
+# depending on whether the top-level site is site-a.com or site-b.com
+# Prevents cross-site tracking via shared cookie values</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies" target="_blank">MDN: Cookies</a>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie" target="_blank">MDN: Set-Cookie</a>
+      <a href="https://httpwg.org/http-extensions/draft-ietf-httpbis-rfc6265bis.html" target="_blank">RFC 6265bis</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/csrf/bypassing-samesite-restrictions" target="_blank" class="community">PortSwigger: SameSite</a>
+      <a href="https://web.dev/articles/samesite-cookies-explained" target="_blank" class="community">web.dev</a>
+      <a href="https://developer.chrome.com/docs/privacy-sandbox/chips/" target="_blank" class="community">Chrome: CHIPS</a>
+    </div>
+  </div>
+
+  <!-- ===================== Fetch Metadata ===================== -->
+  <h2 id="fetch-metadata">Fetch Metadata Headers</h2>
+
+  <p>Fetch Metadata request headers are automatically added by the browser, telling the server where a request originated and how it was initiated. Servers can use these headers to implement Resource Isolation Policies — rejecting requests that should not be cross-origin.</p>
+
+  <h3>Header Reference</h3>
+  <pre># Sec-Fetch-Site: relationship between the request origin and the resource origin
+Sec-Fetch-Site: same-origin   # same origin
+Sec-Fetch-Site: same-site     # same site, different origin (sub.example.com → example.com)
+Sec-Fetch-Site: cross-site    # different site
+Sec-Fetch-Site: none          # user-initiated navigation (typed URL, bookmark)
+
+# Sec-Fetch-Mode: how the request was initiated
+Sec-Fetch-Mode: navigate      # top-level navigation
+Sec-Fetch-Mode: cors          # CORS fetch
+Sec-Fetch-Mode: no-cors       # cross-origin fetch without CORS (e.g., &lt;img&gt;)
+Sec-Fetch-Mode: same-origin   # same-origin fetch
+Sec-Fetch-Mode: websocket     # WebSocket upgrade
+
+# Sec-Fetch-Dest: the destination/type of the requested resource
+Sec-Fetch-Dest: document      # top-level page navigation
+Sec-Fetch-Dest: script        # &lt;script&gt; tag
+Sec-Fetch-Dest: image         # &lt;img&gt; tag
+Sec-Fetch-Dest: empty         # fetch() API calls and XHR (no specific destination)
+
+# Sec-Fetch-User: true if request was triggered by user activation
+Sec-Fetch-User: ?1</pre>
+
+  <h3>Server-side Resource Isolation Policy</h3>
+  <pre>def resource_isolation_policy(request):
+    """Reject cross-site requests that shouldn't be cross-origin."""
+    site = request.headers.get('Sec-Fetch-Site', '')
+    mode = request.headers.get('Sec-Fetch-Mode', '')
+    dest = request.headers.get('Sec-Fetch-Dest', '')
+
+    # Allow same-origin and browser-direct requests
+    if site in ('same-origin', 'same-site', 'none'):
+        return True
+
+    # Allow simple cross-site navigations (user clicked a link)
+    if mode == 'navigate' and dest == 'document':
+        return True
+
+    # Block everything else (CSRF, cross-site XHR, etc.)
+    return False  # Return 403</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Glossary/Fetch_metadata_request_header" target="_blank">MDN: Fetch Metadata</a>
+      <a href="https://w3c.github.io/webappsec-fetch-metadata/" target="_blank">W3C Spec</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://web.dev/articles/fetch-metadata" target="_blank" class="community">web.dev</a>
+      <a href="https://portswigger.net/research/bypassing-csp-with-policy-injection" target="_blank" class="community">PortSwigger Research</a>
+    </div>
+  </div>
+
+  <!-- ===================== Permissions Policy ===================== -->
+  <h2 id="permissions-policy">Permissions Policy</h2>
+
+  <p>The Permissions Policy header (formerly Feature-Policy) controls which browser features and APIs a page and its iframes can use. Disabling unused features limits the damage from XSS — a script cannot exfiltrate microphone recordings if the mic API is disabled.</p>
+
+  <pre># Disable camera, mic, geolocation, payment, USB for all origins (including iframes)
+Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()
+
+# Allow geolocation only for self, and specific trusted embed
+Permissions-Policy: geolocation=(self "https://maps.example.com")
+
+# Available features (non-exhaustive):
+# camera, microphone, geolocation, payment, usb, bluetooth
+# accelerometer, gyroscope, magnetometer
+# autoplay, fullscreen, picture-in-picture
+# document-domain, sync-xhr, encrypted-media
+# cross-origin-isolated (requires COOP + COEP)</pre>
+
+  <h3>iframe Delegation</h3>
+  <pre>&lt;!-- Iframe inherits parent's Permissions Policy restrictions --&gt;
+&lt;!-- To grant a feature to an iframe, use the allow attribute --&gt;
+&lt;iframe src="https://maps.example.com/embed"
+  allow="geolocation 'src'; camera 'none'"&gt;
+&lt;/iframe&gt;
+&lt;!-- 'src' = the iframe's own origin; 'none' = no origin --&gt;</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy" target="_blank">MDN: Permissions-Policy</a>
+      <a href="https://www.w3.org/TR/permissions-policy-1/" target="_blank">W3C Spec</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://web.dev/articles/permissions-policy" target="_blank" class="community">web.dev</a>
+      <a href="https://developer.chrome.com/docs/privacy-sandbox/permissions-policy/" target="_blank" class="community">Chrome Docs</a>
+    </div>
+  </div>
+
+  <!-- ===================== COOP/COEP ===================== -->
+  <h2 id="coop-coep">Cross-Origin Isolation (COOP/COEP)</h2>
+
+  <p>Cross-Origin Isolation is a hardened browsing context that enables powerful APIs like <code>SharedArrayBuffer</code> and high-resolution timers — while also preventing Spectre-class side-channel attacks. It requires both COOP and COEP headers.</p>
+
+  <pre># Cross-Origin-Opener-Policy: isolates browsing context group
+# same-origin: page gets its own browsing context group — cannot be opened by
+# or communicate with cross-origin pages via window.opener
+Cross-Origin-Opener-Policy: same-origin
+
+# Cross-Origin-Embedder-Policy: requires all subresources to opt-in
+# require-corp: all cross-origin resources must send CORP header
+#   OR be loaded with crossorigin attribute + CORS approval
+Cross-Origin-Embedder-Policy: require-corp</pre>
+
+  <h3>Why COEP is Hard to Deploy</h3>
+  <pre>Your page loads:
+  - Fonts from Google Fonts → must add Cross-Origin-Resource-Policy: cross-origin
+  - Images from S3 → must add CORP header or use crossorigin attribute
+  - Iframes from third parties → must add COEP: unsafe-none on the iframe's response
+
+Any cross-origin resource that doesn't opt-in will be blocked.
+Use "credentialless" mode to ease adoption:
+  Cross-Origin-Embedder-Policy: credentialless
+  # Loads cross-origin resources without cookies — less breakage</pre>
+
+  <h3>What Cross-Origin Isolation Unlocks</h3>
+  <pre>// SharedArrayBuffer — requires crossOriginIsolated = true
+const sab = new SharedArrayBuffer(1024);  // Throws without isolation
+
+// High-resolution performance.now() (required for Spectre exploit)
+// Without isolation: resolution reduced to 1ms to prevent timing attacks
+// With isolation: full resolution restored (deemed safe due to process isolation)
+performance.now();  // μs precision
+
+// Check isolation status:
+console.log(crossOriginIsolated);  // true or false</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Opener-Policy" target="_blank">MDN: COOP</a>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Cross-Origin-Embedder-Policy" target="_blank">MDN: COEP</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://web.dev/articles/coop-coep" target="_blank" class="community">web.dev: COOP+COEP</a>
+      <a href="https://web.dev/articles/cross-origin-isolation-guide" target="_blank" class="community">web.dev: Isolation Guide</a>
+    </div>
+  </div>
+
+  <!-- ===================== iframe Sandbox ===================== -->
+  <h2 id="iframe-sandbox">iframe Sandboxing</h2>
+
+  <p>The <code>sandbox</code> attribute on <code>&lt;iframe&gt;</code> restricts what the embedded content can do. By default, a sandboxed iframe can do almost nothing — capabilities are added back with explicit tokens.</p>
+
+  <h3>Sandbox Attribute Tokens</h3>
+  <table>
+    <thead>
+      <tr><th>Token</th><th>Grants permission to</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>allow-scripts</code></td><td>Execute JavaScript</td></tr>
+      <tr><td><code>allow-same-origin</code></td><td>Treat content as same origin (needed for cookies/storage)</td></tr>
+      <tr><td><code>allow-forms</code></td><td>Submit forms</td></tr>
+      <tr><td><code>allow-popups</code></td><td><code>window.open()</code>, <code>&lt;a target="_blank"&gt;</code></td></tr>
+      <tr><td><code>allow-popups-to-escape-sandbox</code></td><td>Popups can escape sandbox restrictions</td></tr>
+      <tr><td><code>allow-top-level-navigation</code></td><td>Navigate the top-level browsing context</td></tr>
+      <tr><td><code>allow-downloads</code></td><td>Trigger downloads</td></tr>
+      <tr><td><code>allow-pointer-lock</code></td><td>Pointer Lock API</td></tr>
+      <tr><td><code>allow-modals</code></td><td><code>alert()</code>, <code>confirm()</code>, <code>print()</code></td></tr>
+    </tbody>
+  </table>
+
+  <pre>&lt;!-- Full isolation — no scripts, no forms, no same-origin access --&gt;
+&lt;iframe src="untrusted-content.html" sandbox&gt;&lt;/iframe&gt;
+
+&lt;!-- Allow only script execution (NOT same-origin — no DOM/storage access) --&gt;
+&lt;iframe src="widget.html" sandbox="allow-scripts"&gt;&lt;/iframe&gt;
+
+&lt;!-- Common configuration for user-generated content preview --&gt;
+&lt;iframe
+  src="preview.html"
+  sandbox="allow-scripts allow-forms"
+  csp="script-src 'none'"
+  referrerpolicy="no-referrer"&gt;
+&lt;/iframe&gt;</pre>
+
+  <div class="info-box warning">
+    <strong>Danger:</strong> <code>sandbox="allow-scripts allow-same-origin"</code> together is extremely dangerous. If the iframe content is <strong>same-origin</strong> with the embedding page, the script can access <code>parent.document</code> and remove the sandbox attribute itself via DOM manipulation. For <strong>cross-origin</strong> content, the combination still grants the iframe full origin privileges (cookies, storage), defeating the sandbox's purpose even though direct attribute removal is not possible.
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTML/Element/iframe#sandbox" target="_blank">MDN: iframe sandbox</a>
+      <a href="https://html.spec.whatwg.org/multipage/iframe-embed-object.html#attr-iframe-sandbox" target="_blank">WHATWG Spec</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://web.dev/articles/sandboxed-iframes" target="_blank" class="community">web.dev</a>
+      <a href="https://portswigger.net/web-security/clickjacking#preventing-clickjacking-using-csp" target="_blank" class="community">PortSwigger</a>
+    </div>
+  </div>
+
+  <!-- ===================== Spectre ===================== -->
+  <h2 id="spectre">Spectre & Side-Channel Mitigations</h2>
+
+  <p>The Spectre (CVE-2017-5753/5715) and Meltdown (CVE-2017-5754) vulnerabilities demonstrated that speculative execution in modern CPUs can leak data across security boundaries via timing side channels. In the browser, JavaScript's access to high-resolution timers made it possible to read memory from other browser tabs or the kernel.</p>
+
+  <h3>The Attack Mechanism (Simplified)</h3>
+  <pre>Spectre exploits CPU branch prediction and out-of-order execution:
+
+1. CPU speculatively executes code past a conditional branch before knowing the branch outcome
+2. Speculatively executed code accesses memory it shouldn't (e.g., another process's memory)
+3. Access loads data into CPU cache
+4. Branch resolves as not-taken — CPU rolls back the computation, BUT the cache is not rolled back
+5. Attacker measures timing of memory accesses to determine what was loaded into cache
+6. Infers the value of memory that should be inaccessible
+
+In the browser:
+  - JavaScript uses a SharedArrayBuffer with a worker-thread busy-loop counter to build a high-resolution timer
+  - The SharedArrayBuffer counter technique can achieve effective sub-microsecond resolution. Combined with statistical amplification over many measurements, this is sufficient to distinguish cache hits (~1-4ns) from misses (~60-200ns).
+  - Read arbitrary memory from the same process (e.g., cross-origin iframe data)</pre>
+
+  <h3>Browser Mitigations</h3>
+  <pre>1. Reduced timer precision
+   performance.now() → reduced resolution (1ms in Firefox; 100μs in Chrome non-isolated contexts)
+   Date.now()        → 1ms resolution
+   Resolution is restored to higher precision in cross-origin isolated contexts (crossOriginIsolated = true)
+   Impact: makes timing attacks significantly harder
+
+2. Disabled SharedArrayBuffer (2018–2020)
+   SharedArrayBuffer allows building precise timers via Atomics.wait()
+   Disabled globally; re-enabled only in cross-origin isolated contexts
+
+3. Site Isolation (Chrome, Firefox)
+   Each top-level site runs in its own OS process
+   Cross-origin iframes → separate process
+   Memory pages from different sites cannot share the same process memory
+
+4. Spectre-resistant fetch mode
+   'no-cors' requests for cross-origin resources are opaque — response body inaccessible
+   Prevents Spectre from being used to read cross-origin response data
+
+5. Cross-Origin Read Blocking (CORB)
+   Blocks cross-origin HTML/JSON/XML responses from entering renderer process
+   Even if Spectre reads process memory, sensitive data was never loaded
+
+6. Cross-Origin Opener Policy (COOP)
+   Prevents window.opener / postMessage channel between cross-origin pages
+   Cross-origin pages cannot share a browsing context group → separate processes</pre>
+
+  <h3>What Developers Should Do</h3>
+  <div class="defence-list">
+    <h4>Developer Checklist</h4>
+    <ul>
+      <li>Deploy COOP + COEP for pages that need <code>SharedArrayBuffer</code> (high-perf apps)</li>
+      <li>Ensure sensitive data responses include appropriate CORP headers</li>
+      <li>Don't embed secrets in page source that can be read by any same-process script</li>
+      <li>Use <code>HttpOnly</code> cookies for session tokens (inaccessible to JS even if Spectre reads DOM)</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://spectreattack.com/" target="_blank">spectreattack.com</a>
+      <a href="https://www.intel.com/content/www/us/en/developer/articles/technical/software-security-guidance/advisory-guidance/retpoline-a-branch-target-injection-mitigation.html" target="_blank">Intel: Retpoline</a>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/SharedArrayBuffer#security_requirements" target="_blank">MDN: SharedArrayBuffer</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://web.dev/articles/why-coop-coep" target="_blank" class="community">web.dev: Why COOP/COEP</a>
+      <a href="https://googleprojectzero.blogspot.com/2018/01/reading-privileged-memory-with-side.html" target="_blank" class="community">Project Zero</a>
+      <a href="https://leaky.page/" target="_blank" class="community">leaky.page</a>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  document.querySelectorAll('nav a').forEach(link => {
+    link.addEventListener('click', e => {
+      const href = link.getAttribute('href');
+      if (!href || !href.startsWith('#')) return;
+      e.preventDefault();
+      const target = document.querySelector(href);
+      if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+
+  const headings = document.querySelectorAll('h2[id], h1[id]');
+  const navLinks = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -80% 0px' });
+
+  headings.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

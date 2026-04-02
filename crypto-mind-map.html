@@ -1,0 +1,1311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cryptographic Engineering — Interactive Mind Map</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #131925;
+    --surface2: #1a2233;
+    --border: #2a3444;
+    --accent: #00d4aa;
+    --accent2: #7c5cfc;
+    --accent3: #ff6b6b;
+    --accent4: #ffd93d;
+    --accent5: #00bfff;
+    --accent6: #ff9ff3;
+    --accent7: #ff8c42;
+    --text: #e0e6ed;
+    --text-dim: #8892a4;
+    --text-bright: #ffffff;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Inter', -apple-system, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  /* ─── Toolbar ─── */
+  #toolbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 52px;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 16px;
+    gap: 10px;
+    z-index: 100;
+  }
+  #toolbar h1 {
+    font-size: 15px;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-right: auto;
+    white-space: nowrap;
+  }
+  .tb-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .tb-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .tb-btn.active { background: rgba(0,212,170,0.15); border-color: var(--accent); color: var(--accent); }
+  #search-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 12px;
+    width: 180px;
+    outline: none;
+  }
+  #search-box:focus { border-color: var(--accent); }
+  #search-box::placeholder { color: var(--text-dim); }
+
+  /* ─── Links bar ─── */
+  .link-bar {
+    position: fixed; top: 52px; left: 0; right: 0;
+    height: 36px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+    z-index: 99;
+    font-size: 12px;
+  }
+  .link-bar span { color: var(--text-dim); }
+  .link-bar a {
+    color: var(--accent);
+    text-decoration: none;
+    padding: 4px 10px;
+    border-radius: 4px;
+    transition: all 0.15s;
+  }
+  .link-bar a:hover { background: rgba(0,212,170,0.12); }
+
+  /* ─── Canvas ─── */
+  #canvas {
+    position: absolute;
+    top: 88px; left: 0; right: 0; bottom: 0;
+    overflow: hidden;
+    cursor: grab;
+  }
+  #canvas.dragging { cursor: grabbing; }
+
+  #world {
+    position: absolute;
+    transform-origin: 0 0;
+    transition: transform 0.05s linear;
+  }
+
+  /* ─── Nodes ─── */
+  .node {
+    position: absolute;
+    border-radius: 12px;
+    padding: 12px 16px;
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.2s;
+    max-width: 280px;
+    user-select: none;
+  }
+  .node:hover { transform: scale(1.04); z-index: 10; }
+  .node.highlight { box-shadow: 0 0 20px rgba(0,212,170,0.6) !important; z-index: 20; }
+  .node.dimmed { opacity: 0.2; }
+
+  .node .node-title { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+  .node .node-subtitle { font-size: 11px; opacity: 0.7; line-height: 1.4; }
+  .node .node-example {
+    font-size: 10px;
+    margin-top: 6px;
+    padding: 5px 8px;
+    border-radius: 5px;
+    background: rgba(0,0,0,0.25);
+    line-height: 1.4;
+    color: var(--text-dim);
+  }
+  .node .node-example strong { color: var(--accent4); font-weight: 600; }
+  .node .expand-indicator {
+    position: absolute;
+    top: 6px; right: 10px;
+    font-size: 11px;
+    opacity: 0.5;
+  }
+  .node .note-indicator {
+    position: absolute;
+    bottom: 4px; right: 8px;
+    font-size: 10px;
+    color: var(--accent4);
+  }
+
+  /* Node levels */
+  .node.root-node {
+    background: linear-gradient(135deg, rgba(0,212,170,0.25), rgba(124,92,252,0.25));
+    border: 2px solid var(--accent);
+    box-shadow: 0 0 30px rgba(0,212,170,0.15);
+    z-index: 5;
+  }
+  .node.root-node .node-title { color: var(--text-bright); font-size: 18px; }
+
+  .node.l1 {
+    border: 2px solid;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  }
+  .node.l1 .node-title { font-size: 14px; }
+
+  .node.l2 {
+    border: 1px solid;
+    background: var(--surface);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  }
+
+  .node.l3 {
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    font-size: 12px;
+    padding: 8px 14px;
+    max-width: 240px;
+  }
+  .node.l3 .node-title { font-size: 12px; }
+  .node.l3 .node-subtitle { font-size: 10px; }
+
+  /* Color themes */
+  .theme-tls { border-color: var(--accent) !important; }
+  .theme-tls .node-title { color: var(--accent); }
+  .theme-tls.l1 { background: rgba(0,212,170,0.08); }
+
+  .theme-pki { border-color: var(--accent2) !important; }
+  .theme-pki .node-title { color: var(--accent2); }
+  .theme-pki.l1 { background: rgba(124,92,252,0.08); }
+
+  .theme-verify { border-color: var(--accent4) !important; }
+  .theme-verify .node-title { color: var(--accent4); }
+  .theme-verify.l1 { background: rgba(255,217,61,0.08); }
+
+  .theme-supply { border-color: var(--accent3) !important; }
+  .theme-supply .node-title { color: var(--accent3); }
+  .theme-supply.l1 { background: rgba(255,107,107,0.08); }
+
+  .theme-git { border-color: var(--accent5) !important; }
+  .theme-git .node-title { color: var(--accent5); }
+  .theme-git.l1 { background: rgba(0,191,255,0.08); }
+
+  .theme-modern { border-color: var(--accent6) !important; }
+  .theme-modern .node-title { color: var(--accent6); }
+  .theme-modern.l1 { background: rgba(255,159,243,0.08); }
+
+  .theme-authn { border-color: var(--accent7) !important; }
+  .theme-authn .node-title { color: var(--accent7); }
+  .theme-authn.l1 { background: rgba(255,140,66,0.08); }
+
+  .theme-websec { border-color: #e91e8c !important; }
+  .theme-websec .node-title { color: #e91e8c; }
+  .theme-websec.l1 { background: rgba(233,30,140,0.08); }
+
+  .theme-appsec { border-color: var(--accent3) !important; }
+  .theme-appsec .node-title { color: var(--accent3); }
+  .theme-appsec.l1 { background: rgba(255,107,107,0.08); }
+
+  .theme-browser { border-color: var(--accent2) !important; }
+  .theme-browser .node-title { color: var(--accent2); }
+  .theme-browser.l1 { background: rgba(124,92,252,0.08); }
+
+  .theme-netdef { border-color: var(--accent) !important; }
+  .theme-netdef .node-title { color: var(--accent); }
+  .theme-netdef.l1 { background: rgba(0,212,170,0.08); }
+
+  /* ─── SVG connections ─── */
+  #connections {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+  }
+  #connections line { stroke-width: 1.5; opacity: 0.3; }
+  #connections line.highlight { opacity: 0.9; stroke-width: 2.5; }
+  #connections line.dimmed { opacity: 0.05; }
+
+  /* ─── Cross-links (arrowed curved paths) ─── */
+  #crosslinks {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: all;
+    z-index: 1;
+  }
+  #crosslinks path {
+    fill: none;
+    stroke-width: 2.5;
+    stroke-dasharray: 8 5;
+    opacity: 0;
+    transition: opacity 0.25s;
+    pointer-events: visibleStroke;
+    cursor: pointer;
+  }
+  #crosslinks path.visible { opacity: 0.55; }
+  #crosslinks path.hovered { opacity: 1 !important; stroke-width: 3.5; stroke-dasharray: none; filter: drop-shadow(0 0 4px currentColor); }
+  #crosslinks path.highlight { opacity: 0.9; stroke-width: 3.5; stroke-dasharray: none; }
+  #crosslinks path.dimmed { opacity: 0 !important; pointer-events: none; }
+
+  /* ─── Floating tooltip for cross-link hover ─── */
+  #cl-tooltip {
+    position: fixed;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    color: var(--text);
+    pointer-events: none;
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.15s;
+    max-width: 260px;
+    line-height: 1.5;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+  }
+  #cl-tooltip.show { opacity: 1; }
+  #cl-tooltip .tt-header {
+    font-weight: 700;
+    margin-bottom: 4px;
+    font-size: 11px;
+  }
+  #cl-tooltip .tt-label {
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  /* ─── Note panel ─── */
+  #note-panel {
+    position: fixed;
+    bottom: 0; right: 0;
+    width: 380px;
+    max-height: 55vh;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    border-top: 1px solid var(--border);
+    border-radius: 12px 0 0 0;
+    z-index: 200;
+    display: none;
+    flex-direction: column;
+  }
+  #note-panel.open { display: flex; }
+  #note-panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  #note-panel-header h3 { font-size: 14px; color: var(--accent); }
+  #note-panel-close { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 18px; }
+  #note-panel-body { padding: 12px 16px; flex: 1; overflow-y: auto; }
+  .note-node-title { font-weight: 700; font-size: 15px; color: var(--text-bright); margin-bottom: 4px; }
+  .note-node-desc { font-size: 12px; color: var(--text-dim); margin-bottom: 8px; line-height: 1.5; }
+  .note-connections { font-size: 11px; margin-bottom: 10px; }
+  .note-connections strong { color: var(--accent); }
+  .note-conn-link {
+    display: inline-block;
+    color: var(--accent5);
+    cursor: pointer;
+    padding: 1px 6px;
+    border-radius: 3px;
+    transition: background 0.15s;
+    margin: 1px;
+  }
+  .note-conn-link:hover { background: rgba(0,191,255,0.15); }
+  #note-textarea {
+    width: 100%;
+    min-height: 100px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    padding: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+  }
+  #note-textarea:focus { border-color: var(--accent); }
+  #note-textarea::placeholder { color: var(--text-dim); }
+  .note-save-hint { font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+  .note-tags { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+  .note-tag {
+    padding: 3px 10px; border-radius: 4px; font-size: 11px;
+    cursor: pointer; border: 1px solid var(--border); color: var(--text-dim);
+    transition: all 0.15s;
+  }
+  .note-tag:hover, .note-tag.active {
+    border-color: var(--accent); color: var(--accent); background: rgba(0,212,170,0.1);
+  }
+
+  /* ─── Legend ─── */
+  #legend {
+    position: fixed; bottom: 12px; left: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    z-index: 50;
+    max-width: 200px;
+  }
+  #legend .legend-title { font-weight: 700; margin-bottom: 6px; color: var(--text-bright); }
+  .legend-item { display: flex; align-items: center; gap: 8px; margin: 3px 0; cursor: pointer; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .legend-sep { border-top: 1px solid var(--border); margin: 6px 0; }
+  #toggle-crosslinks {
+    font-size: 11px; cursor: pointer; color: var(--text-dim); margin-top: 6px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  #toggle-crosslinks input { accent-color: var(--accent); }
+
+  /* ─── Zoom indicator ─── */
+  #zoom-level {
+    position: fixed; bottom: 12px; right: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 12px;
+    color: var(--text-dim);
+    z-index: 50;
+  }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <h1>Cryptographic Engineering Mind Map</h1>
+  <input type="text" id="search-box" placeholder="Search concepts..." />
+  <button class="tb-btn" id="btn-fit">Fit View</button>
+  <button class="tb-btn" id="btn-collapse">Collapse All</button>
+  <button class="tb-btn" id="btn-expand">Expand All</button>
+  <button class="tb-btn active" id="btn-crosslinks">Hide Cross-Links</button>
+  <button class="tb-btn" id="btn-export">Export Notes</button>
+</div>
+
+<div class="link-bar">
+  <span>Study Resources:</span>
+  <a href="tls-cryptographic-engineering-guide.html">Full Guide</a>
+  <a href="crypto-study-notes.html">Study Notes Tracker</a>
+  <a href="web-app-security.html" target="_blank">🔓 Web App Security</a>
+  <a href="browser-security.html" target="_blank">🛡️ Browser Security</a>
+</div>
+
+<div id="canvas">
+  <div id="world">
+    <svg id="connections"></svg>
+    <svg id="crosslinks"></svg>
+  </div>
+</div>
+
+<div id="note-panel">
+  <div id="note-panel-header">
+    <h3 id="note-panel-title">Notes</h3>
+    <button id="note-panel-close">&times;</button>
+  </div>
+  <div id="note-panel-body">
+    <div class="note-node-title" id="note-node-title"></div>
+    <div class="note-node-desc" id="note-node-desc"></div>
+    <div class="note-connections" id="note-connections"></div>
+    <textarea id="note-textarea" placeholder="Type your notes here... (auto-saves)"></textarea>
+    <div class="note-save-hint">Notes auto-save as you type</div>
+    <div class="note-tags">
+      <span class="note-tag" data-tag="understood">Understood</span>
+      <span class="note-tag" data-tag="review">Needs Review</span>
+      <span class="note-tag" data-tag="confused">Confused</span>
+      <span class="note-tag" data-tag="important">Important</span>
+    </div>
+  </div>
+</div>
+
+<div id="legend">
+  <div class="legend-title">Topics (click to filter)</div>
+  <div class="legend-item" data-theme="tls"><div class="legend-dot" style="background:var(--accent)"></div>TLS & Handshake</div>
+  <div class="legend-item" data-theme="pki"><div class="legend-dot" style="background:var(--accent2)"></div>PKI & Certificates</div>
+  <div class="legend-item" data-theme="verify"><div class="legend-dot" style="background:var(--accent4)"></div>Verification & Signing</div>
+  <div class="legend-item" data-theme="supply"><div class="legend-dot" style="background:var(--accent3)"></div>Supply Chain Security</div>
+  <div class="legend-item" data-theme="git"><div class="legend-dot" style="background:var(--accent5)"></div>Git & VCS Security</div>
+  <div class="legend-item" data-theme="modern"><div class="legend-dot" style="background:var(--accent6)"></div>Modern Protocols</div>
+  <div class="legend-item" data-theme="authn"><div class="legend-dot" style="background:var(--accent7)"></div>Authentication</div>
+  <div class="legend-item" data-theme="websec"><div class="legend-dot" style="background:#e91e8c"></div>Web Security</div>
+  <div class="legend-item" data-theme="appsec"><div class="legend-dot" style="background:var(--accent3)"></div>Application Security</div>
+  <div class="legend-item" data-theme="browser"><div class="legend-dot" style="background:var(--accent2)"></div>Browser Security</div>
+  <div class="legend-item" data-theme="netdef"><div class="legend-dot" style="background:var(--accent)"></div>Network Defence</div>
+  <div class="legend-sep"></div>
+  <label id="toggle-crosslinks"><input type="checkbox" id="cb-crosslinks" checked /> Show cross-connections</label>
+</div>
+
+<div id="zoom-level">100%</div>
+<div id="cl-tooltip"><div class="tt-header" id="cl-tt-header"></div><div class="tt-label" id="cl-tt-label"></div></div>
+
+<script>
+// ═══════════════════════════════════════════════
+// MIND MAP DATA — nodes, cross-links, corporate examples
+// ═══════════════════════════════════════════════
+
+const nodes = [
+  // ─── Root ───
+  { id: "root", title: "Cryptographic\nEngineering", sub: "", x: 0, y: 0, level: "root", theme: "", desc: "The complete landscape of modern cryptographic engineering — from TLS handshakes to authentication and supply chain security." },
+
+  // ═══ TLS Branch (upper-left) ═══
+  { id: "tls", title: "TLS 1.3", sub: "Transport Layer Security", x: -800, y: -450, level: 1, theme: "tls", parent: "root",
+    desc: "The current standard for encrypted communication on the internet. RFC 8446.",
+    example: "<strong>Corporate:</strong> Every HTTPS request to google.com, Stripe API calls, Slack messages — all ride on TLS 1.3." },
+  { id: "tls-handshake", title: "1-RTT Handshake", sub: "ClientHello → ServerHello → Encrypted", x: -1100, y: -650, level: 2, theme: "tls", parent: "tls",
+    desc: "TLS 1.3 completes the handshake in one round-trip. Client speculatively sends key shares.",
+    example: "<strong>Corporate:</strong> When a Cloudflare customer loads a site, the 1-RTT handshake fires in ~50ms before any page data flows." },
+  { id: "tls-0rtt", title: "0-RTT Resumption", sub: "PSK-based, replay risk", x: -1300, y: -570, level: 3, theme: "tls", parent: "tls-handshake",
+    desc: "Pre-shared key resumption. Sends data immediately but vulnerable to replay attacks. Only for idempotent requests." },
+  { id: "tls-hkdf", title: "HKDF Key Schedule", sub: "Extract → Expand", x: -1300, y: -480, level: 3, theme: "tls", parent: "tls-handshake",
+    desc: "HMAC-based key derivation (RFC 5869): Extract → Expand. TLS 1.3 uses a Derive-Secret() function built on top of Expand — it is not a separate HKDF primitive. Transcript hash at each step means tampering breaks all derived keys." },
+  { id: "tls-ecdhe", title: "ECDHE Key Exchange", sub: "X25519 / P-256", x: -1050, y: -360, level: 2, theme: "tls", parent: "tls",
+    desc: "Ephemeral Diffie-Hellman over elliptic curves. Fresh keys per connection = forward secrecy.",
+    example: "<strong>Corporate:</strong> AWS, Azure, and GCP all mandate X25519 for their load balancer TLS termination." },
+  { id: "tls-forward", title: "Forward Secrecy", sub: "Ephemeral keys discarded", x: -1300, y: -340, level: 3, theme: "tls", parent: "tls-ecdhe",
+    desc: "Past sessions can't be decrypted even if the long-term key is later compromised." },
+  { id: "tls-cipher", title: "Cipher Suites", sub: "AES-GCM, ChaCha20-Poly1305", x: -1000, y: -240, level: 2, theme: "tls", parent: "tls",
+    desc: "TLS 1.3 allows only 5 cipher suites. AEAD only. No more CBC, RC4, or 3DES." },
+  { id: "tls-aead", title: "AEAD", sub: "Authenticated Encryption", x: -1250, y: -220, level: 3, theme: "tls", parent: "tls-cipher",
+    desc: "Encryption + integrity in one operation. AES-GCM and ChaCha20-Poly1305 are the two widely deployed AEADs in TLS 1.3 (RFC 8446 defines 5 total, including two AES-CCM variants for constrained environments)." },
+  { id: "tls-sni", title: "SNI / ECH", sub: "Server Name Indication", x: -700, y: -280, level: 2, theme: "tls", parent: "tls",
+    desc: "SNI sends hostname in plaintext. ECH encrypts the entire ClientHello for privacy.",
+    example: "<strong>Corporate:</strong> Cloudflare deployed ECH to prevent ISPs from seeing which site behind their CDN users visit." },
+  { id: "tls-inspect", title: "TLS Inspection", sub: "Corporate MITM proxy", x: -550, y: -370, level: 2, theme: "tls", parent: "tls",
+    desc: "Proxy terminates TLS, inspects plaintext, re-encrypts. Requires org's root CA in trust store.",
+    example: "<strong>Corporate:</strong> Zscaler, Palo Alto deploy TLS inspection at Fortune 500 companies for DLP and malware scanning." },
+  { id: "tls-quic", title: "QUIC / HTTP/3", sub: "TLS 1.3 over UDP", x: -800, y: -180, level: 3, theme: "tls", parent: "tls",
+    desc: "HTTP/3 transport. Embeds TLS 1.3 handshake into connection setup for 0-RTT.",
+    example: "<strong>Corporate:</strong> Google, Meta, and Akamai serve majority of traffic over QUIC for lower latency." },
+
+  // ═══ PKI Branch (upper-right) ═══
+  { id: "pki", title: "PKI", sub: "Public Key Infrastructure", x: 800, y: -450, level: 1, theme: "pki", parent: "root",
+    desc: "The trust hierarchy that makes HTTPS possible. Root CAs → Intermediates → Leaf certs.",
+    example: "<strong>Corporate:</strong> Let's Encrypt issues 300M+ active certs. DigiCert and Sectigo serve enterprise PKI." },
+  { id: "pki-chain", title: "Chain of Trust", sub: "Root → Intermediate → Leaf", x: 1050, y: -650, level: 2, theme: "pki", parent: "pki",
+    desc: "Each cert is signed by its issuer. Walk up until you hit a trusted root in the local store." },
+  { id: "pki-root", title: "Root CAs", sub: "Self-signed trust anchors", x: 1300, y: -720, level: 3, theme: "pki", parent: "pki-chain",
+    desc: "~100-150 root CAs hardcoded in OS/browser. Keys in HSMs, air-gapped, used rarely." },
+  { id: "pki-intermediate", title: "Intermediate CAs", sub: "Day-to-day issuance", x: 1300, y: -630, level: 3, theme: "pki", parent: "pki-chain",
+    desc: "Signed by root. If compromised, revoke without touching the root. Defense in depth." },
+  { id: "pki-x509", title: "X.509 Certificates", sub: "The standard format", x: 1050, y: -520, level: 2, theme: "pki", parent: "pki",
+    desc: "Contains: public key, identity (SAN), validity period, issuer, key usage, CA signature.",
+    example: "<strong>Corporate:</strong> Every bank, hospital, and government site uses X.509 certs for HTTPS identity." },
+  { id: "pki-verify", title: "Cert Verification", sub: "6-step validation process", x: 800, y: -620, level: 2, theme: "pki", parent: "pki",
+    desc: "Chain building → signature check → validity → revocation → name match → constraints. (CertificateVerify is a TLS handshake message proving private key possession — it is not an X.509 path validation step.)" },
+  { id: "pki-revoke", title: "Revocation", sub: "CRL, OCSP, OCSP Stapling", x: 600, y: -560, level: 2, theme: "pki", parent: "pki",
+    desc: "CRL: periodic list. OCSP: real-time query. Stapling: server pre-fetches OCSP response." },
+  { id: "pki-ct", title: "Certificate Transparency", sub: "Append-only public logs", x: 600, y: -430, level: 2, theme: "pki", parent: "pki",
+    desc: "Every public cert logged. SCTs prove inclusion. Makes mis-issuance detectable.",
+    example: "<strong>Corporate:</strong> Google's CT system caught Symantec mis-issuing certs, leading to their distrust." },
+  { id: "pki-pinning", title: "Cert Pinning", sub: "SPKI hash, app-level", x: 1050, y: -380, level: 2, theme: "pki", parent: "pki",
+    desc: "Pin expected key/cert hash in the app. Rejects even valid certs from unexpected CAs.",
+    example: "<strong>Corporate:</strong> Banking apps (Chase, HSBC) pin their server certs to prevent MITM on customer devices." },
+  { id: "pki-hsts", title: "HSTS + Preloading", sub: "Force HTTPS, prevent downgrade", x: 800, y: -300, level: 2, theme: "pki", parent: "pki",
+    desc: "Browser remembers to always use HTTPS. Preloading hardcodes this into the browser itself." },
+  { id: "pki-dane", title: "DANE / DNSSEC", sub: "Certificate info in DNS", x: 1050, y: -260, level: 2, theme: "pki", parent: "pki",
+    desc: "TLSA records tie certs to DNS. Bypasses the CA model. Strong for email, weak for browsers." },
+  { id: "pki-mtls", title: "Mutual TLS (mTLS)", sub: "Both sides authenticate", x: 800, y: -180, level: 2, theme: "pki", parent: "pki",
+    desc: "Client also presents a cert. Used in service meshes, zero trust, IoT, financial APIs.",
+    example: "<strong>Corporate:</strong> Istio/Linkerd service meshes use mTLS between every microservice at Netflix, Uber, Airbnb." },
+  { id: "pki-caa", title: "CAA Records", sub: "DNS-based CA restriction", x: 600, y: -300, level: 3, theme: "pki", parent: "pki",
+    desc: "DNS record specifying which CAs can issue for your domain." },
+
+  // ═══ Verification Branch (lower-left) ═══
+  { id: "verify", title: "Verification\n& Signing", sub: "Integrity & authenticity", x: -500, y: 350, level: 1, theme: "verify", parent: "root",
+    desc: "How we prove data hasn't been tampered with and who created it.",
+    example: "<strong>Corporate:</strong> Every iOS app, Windows update, and Docker image is cryptographically signed before delivery." },
+  { id: "verify-mac", title: "MACs", sub: "HMAC, Poly1305, CMAC", x: -800, y: 200, level: 2, theme: "verify", parent: "verify",
+    desc: "Symmetric integrity: shared key produces a tag. Fast. No non-repudiation.",
+    example: "<strong>Corporate:</strong> Stripe uses HMAC-SHA256 for webhook signatures so merchants verify events aren't forged." },
+  { id: "verify-hmac", title: "HMAC", sub: "Hash-based MAC", x: -1050, y: 140, level: 3, theme: "verify", parent: "verify-mac",
+    desc: "Two nested hashes with key. Used in TLS, JWT, API auth, AWS request signing." },
+  { id: "verify-poly", title: "Poly1305", sub: "One-time authenticator", x: -1050, y: 230, level: 3, theme: "verify", parent: "verify-mac",
+    desc: "Paired with ChaCha20. Extremely fast. One-time key per message." },
+  { id: "verify-sig", title: "Digital Signatures", sub: "RSA-PSS, ECDSA, Ed25519", x: -750, y: 400, level: 2, theme: "verify", parent: "verify",
+    desc: "Asymmetric: sign with private key, verify with public. Non-repudiation.",
+    example: "<strong>Corporate:</strong> DocuSign uses digital signatures for legally binding contracts worth billions daily." },
+  { id: "verify-codesign", title: "Code Signing", sub: "Apple, Windows, Android, Linux", x: -500, y: 550, level: 2, theme: "verify", parent: "verify",
+    desc: "Developer signs binary. OS verifies before execution. Trust chains vary by platform.",
+    example: "<strong>Corporate:</strong> Microsoft signs every Windows Update. If the signature breaks, 1B+ devices reject the patch." },
+  { id: "verify-apple", title: "Apple Gatekeeper", sub: "Sign → Notarize → Verify", x: -750, y: 620, level: 3, theme: "verify", parent: "verify-codesign",
+    desc: "Apple Root CA → Developer ID cert → codesign → Apple notarization → Gatekeeper checks on launch." },
+  { id: "verify-windows", title: "Authenticode", sub: "EV certs + SmartScreen", x: -750, y: 700, level: 3, theme: "verify", parent: "verify-codesign",
+    desc: "Any trusted CA can issue code signing certs. EV certs historically provided instant SmartScreen reputation, but Microsoft now bases reputation on prevalence/telemetry regardless of cert type." },
+  { id: "verify-android", title: "Android APK Signing", sub: "v1→v4, self-signed", x: -500, y: 720, level: 3, theme: "verify", parent: "verify-codesign",
+    desc: "Self-signed keys. Identity by continuity. Google Play re-signs with managed key." },
+  { id: "verify-gpg", title: "GPG / PGP", sub: "Web of Trust", x: -300, y: 450, level: 2, theme: "verify", parent: "verify",
+    desc: "Decentralized trust. Users sign each other's keys. Still used for package signing.",
+    example: "<strong>Corporate:</strong> Debian/Ubuntu sign every apt package with GPG. 100M+ servers validate on every install." },
+  { id: "verify-sigstore", title: "Sigstore", sub: "Keyless signing via OIDC", x: -250, y: 580, level: 2, theme: "verify", parent: "verify",
+    desc: "Fulcio (ephemeral certs) + Rekor (transparency log). Sign by logging in. No key management.",
+    example: "<strong>Corporate:</strong> Kubernetes, npm, and PyPI are adopting Sigstore for supply-chain provenance." },
+  { id: "verify-pkgmgr", title: "Package Verification", sub: "apt, npm, pip, Docker", x: -500, y: 200, level: 2, theme: "verify", parent: "verify",
+    desc: "Each ecosystem verifies differently. apt (GPG), npm (Sigstore), pip (hashes/TUF), Docker (Cosign)." },
+
+  // ═══ Supply Chain Branch (lower-right) ═══
+  { id: "supply", title: "Supply Chain\nSecurity", sub: "Source to production", x: 500, y: 350, level: 1, theme: "supply", parent: "root",
+    desc: "Securing every step from developer writing code to code running in production.",
+    example: "<strong>Corporate:</strong> The SolarWinds breach cost $100M+ and hit 18,000 orgs including US Treasury and DOJ." },
+  { id: "supply-threats", title: "Threat Model", sub: "6 attack surfaces", x: 750, y: 200, level: 2, theme: "supply", parent: "supply",
+    desc: "Dev workstation → Source repo → Dependencies → Build system → Registry → Deployment." },
+  { id: "supply-solarwinds", title: "SolarWinds Attack", sub: "Build system compromise", x: 1000, y: 140, level: 3, theme: "supply", parent: "supply-threats",
+    desc: "Attacker injected malware during build. Source was clean. Code review alone is insufficient." },
+  { id: "supply-depconf", title: "Dependency Confusion", sub: "Squatting, hijacking, account takeover", x: 1000, y: 230, level: 3, theme: "supply", parent: "supply-threats",
+    desc: "Several distinct attack classes: (1) Dependency confusion (Alex Birsan, 2021) — a private package name is squatted on a public registry so the package manager fetches the malicious public version instead. (2) Maintainer account takeover/hijacking — event-stream and ua-parser-js were compromised via hijacked maintainer accounts, not dependency confusion.",
+    example: "<strong>Corporate:</strong> Alex Birsan's dependency confusion technique hit Apple, Microsoft, and PayPal in 2021. event-stream (2018) and ua-parser-js (2021) are examples of maintainer account hijacking — a separate attack category." },
+  { id: "supply-slsa", title: "SLSA Framework", sub: "Levels 0-3", x: 500, y: 200, level: 2, theme: "supply", parent: "supply",
+    desc: "Progressive maturity model. L0: nothing. L1: provenance. L2: hosted + signed. L3: hardened + unforgeable.",
+    example: "<strong>Corporate:</strong> Google developed SLSA; GitHub Actions now generates SLSA L3 provenance for public repos." },
+  { id: "supply-provenance", title: "Provenance", sub: "in-toto attestations", x: 300, y: 140, level: 3, theme: "supply", parent: "supply-slsa",
+    desc: "Signed statement: 'artifact X was built from source Y by builder Z.'" },
+  { id: "supply-sbom", title: "SBOM", sub: "SPDX / CycloneDX", x: 500, y: 500, level: 2, theme: "supply", parent: "supply",
+    desc: "Inventory of every component. When a CVE drops, instantly check if you're affected.",
+    example: "<strong>Corporate:</strong> US Executive Order 14028 mandates SBOMs for all software sold to the federal government." },
+  { id: "supply-vex", title: "VEX", sub: "Vulnerability Exploitability", x: 300, y: 560, level: 3, theme: "supply", parent: "supply-sbom",
+    desc: "Annotates SBOM: 'we have log4j but this code path is unreachable.'" },
+  { id: "supply-cicd", title: "CI/CD Security", sub: "Pipeline hardening", x: 750, y: 460, level: 2, theme: "supply", parent: "supply",
+    desc: "Ephemeral runners, pinned actions, minimal permissions, OIDC federation.",
+    example: "<strong>Corporate:</strong> GitHub, GitLab, and CircleCI all offer OIDC tokens to eliminate stored secrets in pipelines." },
+  { id: "supply-oidc", title: "OIDC Federation", sub: "No static credentials", x: 1000, y: 400, level: 3, theme: "supply", parent: "supply-cicd",
+    desc: "GitHub Actions → OIDC token → AWS AssumeRole → short-lived creds. Nothing to leak." },
+  { id: "supply-actions", title: "Pin Actions to SHA", sub: "Prevent tag mutation", x: 1000, y: 490, level: 3, theme: "supply", parent: "supply-cicd",
+    desc: "uses: actions/checkout@SHA not @v4. Tags are mutable; SHAs are not." },
+  { id: "supply-secrets", title: "Secrets Management", sub: "Vault, KMS, rotation", x: 750, y: 600, level: 2, theme: "supply", parent: "supply",
+    desc: "Never in code. Short-lived. Injected at runtime. Vault/KMS for storage.",
+    example: "<strong>Corporate:</strong> HashiCorp Vault serves 10K+ enterprises. AWS KMS protects encryption keys for S3, RDS, etc." },
+
+  // ═══ Git Branch (top-center) ═══
+  { id: "git", title: "Git & VCS\nSecurity", sub: "Version control hardening", x: 0, y: -550, level: 1, theme: "git", parent: "root",
+    desc: "Securing the version control system — commit signing, branch protection, and integrity.",
+    example: "<strong>Corporate:</strong> GitHub hosts 1 billion+ repositories (including forks and archived repos). A single malicious commit could poison millions of downstream builds." },
+  { id: "git-signing", title: "Commit Signing", sub: "GPG / SSH / S/MIME", x: -250, y: -730, level: 2, theme: "git", parent: "git",
+    desc: "Cryptographic proof of authorship. SSH signing is simplest for teams.",
+    example: "<strong>Corporate:</strong> Kubernetes requires signed commits from all maintainers to prevent impersonation." },
+  { id: "git-ssh-sign", title: "SSH Signing", sub: "Simplest for teams", x: -450, y: -810, level: 3, theme: "git", parent: "git-signing",
+    desc: "Use keys you already have. git config gpg.format ssh." },
+  { id: "git-integrity", title: "Content-Addressable", sub: "SHA-1/SHA-256 hash chain", x: 250, y: -730, level: 2, theme: "git", parent: "git",
+    desc: "Every object is its hash. Commits reference parent hashes. Tamper = broken chain." },
+  { id: "git-branch", title: "Branch Protection", sub: "Reviews, signed commits, checks", x: 0, y: -800, level: 2, theme: "git", parent: "git",
+    desc: "2 reviews, signed commits, required CI, no force push, CODEOWNERS for critical paths.",
+    example: "<strong>Corporate:</strong> Google's monorepo requires 2+ LGTM reviews and all tests green before any merge." },
+  { id: "git-codeowners", title: "CODEOWNERS", sub: "Expert review enforcement", x: -250, y: -890, level: 3, theme: "git", parent: "git-branch",
+    desc: "Security team must review crypto/, auth/, and .github/workflows/." },
+  { id: "git-rulesets", title: "GitHub Rulesets", sub: "Org-level, version-controlled", x: 250, y: -890, level: 3, theme: "git", parent: "git-branch",
+    desc: "Successor to branch protection. Org-wide, tag protection, granular bypass." },
+
+  // ═══ Modern Protocols Branch (bottom-center) ═══
+  { id: "modern", title: "Modern\nProtocols", sub: "Beyond TLS", x: 0, y: 550, level: 1, theme: "modern", parent: "root",
+    desc: "Encryption protocols for specific use cases beyond transport security." },
+  { id: "modern-age", title: "age", sub: "Simple file encryption", x: -300, y: 700, level: 2, theme: "modern", parent: "modern",
+    desc: "X25519 + ChaCha20-Poly1305. No config. One-page spec. Replaces PGP for file encryption.",
+    example: "<strong>Corporate:</strong> SOPS by Mozilla uses age to encrypt Kubernetes secrets at rest in Git repos." },
+  { id: "modern-mls", title: "MLS", sub: "Group E2EE (RFC 9420)", x: 0, y: 750, level: 2, theme: "modern", parent: "modern",
+    desc: "TreeKEM ratchet for O(log N) group encryption. Signal is O(N).",
+    example: "<strong>Corporate:</strong> Cisco Webex and Wire use MLS for end-to-end encrypted group chats at enterprise scale." },
+  { id: "modern-wg", title: "WireGuard", sub: "Minimal VPN (~4K LoC)", x: 300, y: 700, level: 2, theme: "modern", parent: "modern",
+    desc: "Noise IK pattern. No algorithm negotiation. If a primitive breaks, bump the protocol version.",
+    example: "<strong>Corporate:</strong> Cloudflare WARP, Tailscale, and Mullvad all run WireGuard for corporate/consumer VPNs." },
+  { id: "modern-nts", title: "NTS", sub: "Authenticated NTP", x: -200, y: 830, level: 3, theme: "modern", parent: "modern",
+    desc: "Secures time sync. Time is a dependency for cert validation, TOTP, and Kerberos." },
+  { id: "modern-dpop", title: "DPoP", sub: "Proof-of-possession tokens", x: 200, y: 830, level: 3, theme: "modern", parent: "modern",
+    desc: "Binds OAuth tokens to a client key. Stolen token is useless without the private key." },
+  { id: "modern-noise", title: "Noise Framework", sub: "Protocol building blocks", x: 0, y: 900, level: 3, theme: "modern", parent: "modern",
+    desc: "Composable DH patterns (XX, IK, NK). Used by WireGuard, Lightning, libp2p." },
+
+  // ═══ Authentication Branch (right side) ═══
+  { id: "authn", title: "Authentication", sub: "Proving identity", x: 1200, y: 0, level: 1, theme: "authn", parent: "root",
+    desc: "Every method of proving who you are — from passwords to passkeys to Kerberos.",
+    example: "<strong>Corporate:</strong> Okta and Azure AD handle billions of authentication events daily across enterprises worldwide." },
+  { id: "authn-passwords", title: "Passwords", sub: "Argon2id, bcrypt, scrypt", x: 1450, y: -250, level: 2, theme: "authn", parent: "authn",
+    desc: "Hash with memory-hard function. Argon2id is the gold standard (time + memory cost).",
+    example: "<strong>Corporate:</strong> 1Password uses Argon2 + SRP. Dropbox uses bcrypt + pepper for 700M+ accounts." },
+  { id: "authn-session", title: "Session Tokens", sub: "CSPRNG + cookie attributes", x: 1500, y: -150, level: 2, theme: "authn", parent: "authn",
+    desc: "256-bit random token. HttpOnly, Secure, SameSite=Lax. Server-side lookup per request." },
+  { id: "authn-jwt", title: "JWT", sub: "Stateless tokens", x: 1500, y: -50, level: 2, theme: "authn", parent: "authn",
+    desc: "Header.Payload.Signature. RS256/ES256 for asymmetric, HS256 for shared secret.",
+    example: "<strong>Corporate:</strong> Auth0 issues JWTs to 50K+ customers. AWS Cognito uses JWTs for serverless auth." },
+  { id: "authn-ssh", title: "SSH Key Auth", sub: "Challenge-response", x: 1500, y: 50, level: 2, theme: "authn", parent: "authn",
+    desc: "Server sends random challenge, client signs with private key. No password sent.",
+    example: "<strong>Corporate:</strong> GitHub manages 100M+ SSH keys. Every git push from a dev laptop uses SSH key auth." },
+  { id: "authn-totp", title: "TOTP / MFA", sub: "Time-based one-time passwords", x: 1500, y: 150, level: 2, theme: "authn", parent: "authn",
+    desc: "HMAC-SHA1(secret, time_step) → 6-digit code (RFC 6238 also defines SHA-256 and SHA-512 variants; many modern implementations prefer SHA-256). 30-second window.",
+    example: "<strong>Corporate:</strong> Google Authenticator, Duo, and Authy protect enterprise accounts with TOTP as a second factor." },
+  { id: "authn-webauthn", title: "WebAuthn / Passkeys", sub: "Phishing-resistant", x: 1450, y: 250, level: 2, theme: "authn", parent: "authn",
+    desc: "ECDSA P-256 keypair bound to origin. Browser enforces domain check. Phishing-resistant — AiTM (adversary-in-the-middle) session hijacking attacks can still work after authentication.",
+    example: "<strong>Corporate:</strong> Google reported 0 phishing incidents after requiring security keys for 85K employees." },
+  { id: "authn-oauth", title: "OAuth 2.0 / OIDC", sub: "Delegated auth + identity", x: 1200, y: 300, level: 2, theme: "authn", parent: "authn",
+    desc: "Authorization code + PKCE → access token + ID token. ID token = signed JWT with user claims.",
+    example: "<strong>Corporate:</strong> 'Sign in with Google/Microsoft' uses OIDC. Okta serves 18K+ orgs via OAuth/OIDC." },
+  { id: "authn-saml", title: "SAML 2.0", sub: "Enterprise SSO (XML-based)", x: 1200, y: -300, level: 2, theme: "authn", parent: "authn",
+    desc: "IdP signs XML assertion. SP verifies signature. XML DSig canonicalization is fragile.",
+    example: "<strong>Corporate:</strong> Every enterprise SSO (Salesforce, Workday, ServiceNow) speaks SAML for legacy compatibility." },
+  { id: "authn-kerberos", title: "Kerberos", sub: "Ticket-based (Active Directory)", x: 1200, y: -180, level: 2, theme: "authn", parent: "authn",
+    desc: "KDC issues TGT → Service Tickets. AES-256-CTS-HMAC-SHA1-96 (still common in legacy environments). RFC 8009 (2017) introduced preferred modern etypes using SHA-2: AES-128-CTS-HMAC-SHA256-128 and AES-256-CTS-HMAC-SHA384-192. Mutual authentication.",
+    example: "<strong>Corporate:</strong> Every Windows domain login at Fortune 500 companies uses Kerberos via Active Directory." },
+  { id: "authn-kerb-attacks", title: "Kerberos Attacks", sub: "Golden/Silver Ticket, Kerberoasting", x: 1000, y: -120, level: 3, theme: "authn", parent: "authn-kerberos",
+    desc: "Golden Ticket = forged TGT (needs krbtgt hash). Kerberoasting = offline crack of service ticket." },
+  { id: "authn-ntlm", title: "NTLM", sub: "Legacy Windows (MD4-based)", x: 1000, y: -220, level: 3, theme: "authn", parent: "authn-kerberos",
+    desc: "Challenge-response with MD4 NT hash. Relay attacks. Being deprecated but still everywhere.",
+    example: "<strong>Corporate:</strong> Many legacy enterprise apps still fall back to NTLM, which is why it's a top pentest target." },
+  { id: "authn-radius", title: "RADIUS / 802.1X", sub: "Network access control", x: 950, y: 50, level: 2, theme: "authn", parent: "authn",
+    desc: "EAP-TLS for Wi-Fi/VPN authentication. Certificate-based is strongest.",
+    example: "<strong>Corporate:</strong> Cisco ISE + RADIUS protects enterprise Wi-Fi at hospitals, banks, and universities." },
+  { id: "authn-smartcard", title: "Smart Cards / PIV", sub: "Hardware-bound keys", x: 950, y: 150, level: 2, theme: "authn", parent: "authn",
+    desc: "On-chip key generation. Private key never leaves the card. PIN unlock.",
+    example: "<strong>Corporate:</strong> US DoD requires CAC cards for all 3M+ personnel. YubiKey PIV protects tech company admins." },
+  { id: "authn-apikeys", title: "API Keys", sub: "CSPRNG + HMAC signing", x: 950, y: 250, level: 2, theme: "authn", parent: "authn",
+    desc: "Random token for machine-to-machine auth. Store only SHA-256 hash. HMAC for request signing.",
+    example: "<strong>Corporate:</strong> AWS Sig V4 signs every API request with HMAC-SHA256. Stripe uses prefixed API keys (sk_live_)." },
+  { id: "authn-device", title: "Device Trust / TPM", sub: "Hardware attestation", x: 950, y: 350, level: 2, theme: "authn", parent: "authn",
+    desc: "TPM PCR measurements, remote attestation, device certificates via MDM. Continuous auth.",
+    example: "<strong>Corporate:</strong> BeyondCorp (Google) and Zscaler ZPA check device posture before granting any access." },
+  { id: "authn-opaque", title: "SRP / OPAQUE", sub: "Zero-knowledge password proof", x: 1450, y: 350, level: 3, theme: "authn", parent: "authn",
+    desc: "Server never sees the password, not even the hash. OPAQUE uses OPRF + Diffie-Hellman." },
+
+  // ═══ Web Security Cluster (bottom-right) ═══
+  { id: "websec", title: "Web Security", sub: "AppSec, Browser Security & Network Defence", x: 1800, y: 1000, level: 1, theme: "websec", parent: "root",
+    desc: "The three pillars of modern web security: application vulnerabilities, browser security model, and network-layer defence.",
+    example: "<strong>Corporate:</strong> Every FAANG security team has dedicated AppSec, browser security, and network defence engineers." },
+
+  // ── AppSec sub-cluster ──
+  { id: "websec-appsec", title: "Application Security", sub: "OWASP Top 10", x: 1500, y: 1150, level: 2, theme: "appsec", parent: "websec",
+    desc: "Securing web applications against the most common vulnerability classes.",
+    example: "<strong>Corporate:</strong> HackerOne and Bugcrowd manage bug bounty programs for thousands of companies targeting these exact vulnerabilities." },
+  { id: "websec-xss", title: "XSS", sub: "Reflected, Stored, DOM", x: 1250, y: 1050, level: 3, theme: "appsec", parent: "websec-appsec",
+    desc: "Cross-Site Scripting — attacker-controlled JS executes in victim's browser. Defence: output encoding, CSP, HttpOnly cookies.",
+    href: "web-app-security.html#xss" },
+  { id: "websec-sqli", title: "SQL Injection", sub: "Parameterised queries", x: 1200, y: 1150, level: 3, theme: "appsec", parent: "websec-appsec",
+    desc: "User input alters SQL query logic. Fix: parameterised queries (prepared statements) — the only reliable defence.",
+    href: "web-app-security.html#sqli" },
+  { id: "websec-csrf", title: "CSRF", sub: "SameSite + CSRF tokens", x: 1200, y: 1250, level: 3, theme: "appsec", parent: "websec-appsec",
+    desc: "Browser auto-sends cookies cross-site — attacker forges state-changing requests. Defence: SameSite=Strict, CSRF tokens.",
+    href: "web-app-security.html#csrf" },
+  { id: "websec-idor", title: "IDOR", sub: "Broken access control", x: 1250, y: 1350, level: 3, theme: "appsec", parent: "websec-appsec",
+    desc: "Application accesses objects without checking ownership. Always check server-side: WHERE id=? AND user_id=current_user.",
+    href: "web-app-security.html#idor" },
+  { id: "websec-ssrf", title: "SSRF", sub: "Internal service access", x: 1380, y: 1420, level: 3, theme: "appsec", parent: "websec-appsec",
+    desc: "Server fetches attacker-controlled URL — probes internal services, cloud metadata. Defence: strict allowlist, IMDSv2.",
+    href: "web-app-security.html#ssrf" },
+  { id: "websec-xxe", title: "XXE", sub: "External entity injection", x: 1530, y: 1420, level: 3, theme: "appsec", parent: "websec-appsec",
+    desc: "XML parser processes external entities — reads local files or performs SSRF. Fix: disable external entities.",
+    href: "web-app-security.html#xxe" },
+
+  // ── Browser Security sub-cluster ──
+  { id: "websec-browser", title: "Browser Security", sub: "SOP, CORS, CSP & isolation", x: 2100, y: 1150, level: 2, theme: "browser", parent: "websec",
+    desc: "The browser security model — same-origin policy, isolation mechanisms, and developer-controlled security headers.",
+    example: "<strong>Corporate:</strong> Google Chrome's security team maintains the browser isolation model that protects billions of users." },
+  { id: "websec-sop", title: "Same-Origin Policy", sub: "Scheme + host + port", x: 2350, y: 1050, level: 3, theme: "browser", parent: "websec-browser",
+    desc: "SOP blocks cross-origin reads but allows writes and embeds. Foundation of all browser security.",
+    href: "browser-security.html#sop" },
+  { id: "websec-cors", title: "CORS", sub: "Controlled SOP relaxation", x: 2400, y: 1150, level: 3, theme: "browser", parent: "websec-browser",
+    desc: "Server declares which origins may read its responses. Preflight for non-simple requests. Never reflect arbitrary origins.",
+    href: "browser-security.html#cors" },
+  { id: "websec-csp", title: "CSP", sub: "Content Security Policy", x: 2400, y: 1250, level: 3, theme: "browser", parent: "websec-browser",
+    desc: "HTTP header restricting resource loading. Nonce-based CSP kills most XSS. Never use unsafe-inline.",
+    href: "browser-security.html#csp" },
+  { id: "websec-sri", title: "SRI", sub: "Subresource Integrity", x: 2350, y: 1350, level: 3, theme: "browser", parent: "websec-browser",
+    desc: "Cryptographic hash check on third-party scripts. Blocks CDN compromise from serving malicious files.",
+    href: "browser-security.html#sri" },
+  { id: "websec-cookies", title: "Cookie Attributes", sub: "HttpOnly, Secure, SameSite", x: 2200, y: 1420, level: 3, theme: "browser", parent: "websec-browser",
+    desc: "HttpOnly prevents XSS theft. Secure enforces HTTPS. SameSite prevents CSRF. __Host- prevents cookie tossing.",
+    href: "browser-security.html#cookies" },
+  { id: "websec-coop", title: "COOP / COEP", sub: "Cross-origin isolation", x: 2050, y: 1420, level: 3, theme: "browser", parent: "websec-browser",
+    desc: "Cross-Origin Opener/Embedder Policy — enables SharedArrayBuffer, mitigates Spectre/Meltdown side-channel leaks.",
+    href: "browser-security.html#coop-coep" },
+  { id: "websec-trusted-types", title: "Trusted Types", sub: "DOM XSS prevention", x: 1900, y: 1380, level: 3, theme: "browser", parent: "websec-browser",
+    desc: "Enforces that only policy-wrapped objects can be assigned to dangerous DOM sinks (innerHTML, eval).",
+    href: "browser-security.html#trusted-types" },
+
+  // ── Network Defence sub-cluster ──
+  { id: "websec-netdef", title: "Network Defence", sub: "WAF, DDoS, Firewalls", x: 1800, y: 1300, level: 2, theme: "netdef", parent: "websec",
+    desc: "Network-layer controls that complement secure application code — WAFs, DDoS mitigation, and segmentation.",
+    example: "<strong>Corporate:</strong> Cloudflare processes 60M+ requests/second through its WAF and DDoS mitigation network." },
+  { id: "websec-waf", title: "WAF", sub: "Web Application Firewall", x: 1680, y: 1420, level: 3, theme: "netdef", parent: "websec-netdef",
+    desc: "Layer 7 firewall. Signature-based (OWASP CRS) + anomaly-based. Supplement to secure code, not a replacement.",
+    href: "tls-cryptographic-engineering-guide.html#waf" },
+  { id: "websec-ddos", title: "DDoS Mitigation", sub: "Anycast scrubbing, SYN cookies", x: 1780, y: 1480, level: 3, theme: "netdef", parent: "websec-netdef",
+    desc: "L3/L4 volumetric (UDP flood), L4 protocol (SYN flood), L7 application (HTTP flood, Slowloris). Anycast scrubbing at edge.",
+    href: "tls-cryptographic-engineering-guide.html#ddos" },
+  { id: "websec-firewalls", title: "Firewalls & Segmentation", sub: "Zero trust, microsegmentation", x: 1900, y: 1500, level: 3, theme: "netdef", parent: "websec-netdef",
+    desc: "Stateful vs stateless. Network segmentation limits blast radius. Zero trust: never trust, always verify.",
+    href: "tls-cryptographic-engineering-guide.html#firewalls" },
+  { id: "websec-cdn", title: "CDN Security", sub: "Cache poisoning, origin protection", x: 2020, y: 1480, level: 3, theme: "netdef", parent: "websec-netdef",
+    desc: "TLS offloading, DDoS absorption, WAF at edge. Cache poisoning via unkeyed headers. Protect origin IP.",
+    href: "tls-cryptographic-engineering-guide.html#cdn-security" },
+  { id: "websec-botdetect", title: "Bot Detection", sub: "JA3, fingerprinting, signals", x: 2100, y: 1420, level: 3, theme: "netdef", parent: "websec-netdef",
+    desc: "Layer signals: IP reputation, TLS/H2 fingerprint, browser fingerprint, behavioural analysis, device integrity.",
+    href: "tls-cryptographic-engineering-guide.html#bot-detection" },
+];
+
+// ═══════════════════════════════════════════════
+// CROSS-DOMAIN CONNECTIONS — how concepts relate
+// ═══════════════════════════════════════════════
+const crossLinks = [
+  // TLS ↔ PKI
+  { from: "tls-handshake", to: "pki-x509", label: "Server presents X.509 cert during handshake", color: "#7c5cfc" },
+  { from: "tls-handshake", to: "pki-verify", label: "Client runs 6-step cert verification", color: "#7c5cfc" },
+  { from: "tls-inspect", to: "pki-root", label: "Proxy injects org root CA into trust store", color: "#7c5cfc" },
+
+  // TLS ↔ Authentication
+  { from: "tls", to: "authn-session", label: "TLS encrypts session cookies in transit", color: "#ff8c42" },
+  { from: "tls-cipher", to: "verify-mac", label: "AEAD uses MAC internally (Poly1305/GHASH)", color: "#ffd93d" },
+
+  // PKI ↔ Authentication
+  { from: "pki-mtls", to: "authn-smartcard", label: "Smart cards provide client cert for mTLS", color: "#ff8c42" },
+  { from: "pki-x509", to: "authn-saml", label: "SAML assertions signed with X.509 certs", color: "#ff8c42" },
+  { from: "pki-x509", to: "authn-kerberos", label: "PKINIT uses X.509 for initial Kerberos auth", color: "#ff8c42" },
+
+  // PKI ↔ Verification
+  { from: "pki-chain", to: "verify-codesign", label: "Code signing uses same CA chain model", color: "#ffd93d" },
+  { from: "pki-ct", to: "verify-sigstore", label: "Both use append-only transparency logs", color: "#ffd93d" },
+
+  // Verification ↔ Supply Chain
+  { from: "verify-sigstore", to: "supply-slsa", label: "Sigstore provides SLSA provenance signatures", color: "#ff6b6b" },
+  { from: "verify-gpg", to: "supply-provenance", label: "GPG signs provenance attestations", color: "#ff6b6b" },
+  { from: "verify-pkgmgr", to: "supply-sbom", label: "Package verification validates SBOM components", color: "#ff6b6b" },
+
+  // Supply Chain ↔ Git
+  { from: "supply-cicd", to: "git-branch", label: "CI checks enforced via branch protection", color: "#00bfff" },
+  { from: "supply-oidc", to: "authn-oauth", label: "CI/CD OIDC uses OAuth 2.0 token exchange", color: "#ff8c42" },
+  { from: "supply-actions", to: "git-integrity", label: "SHA pinning relies on git's content-addressable model", color: "#00bfff" },
+
+  // Git ↔ Verification
+  { from: "git-signing", to: "verify-gpg", label: "Commit signing uses GPG/SSH keys", color: "#ffd93d" },
+  { from: "git-signing", to: "verify-sig", label: "Commits are digitally signed (Ed25519/RSA)", color: "#ffd93d" },
+
+  // Authentication cross-connections
+  { from: "authn-jwt", to: "verify-hmac", label: "HS256 JWTs use HMAC-SHA256 signatures", color: "#ffd93d" },
+  { from: "authn-jwt", to: "verify-sig", label: "RS256/ES256 JWTs use digital signatures", color: "#ffd93d" },
+  { from: "authn-webauthn", to: "verify-sig", label: "Passkeys use ECDSA P-256 signatures", color: "#ffd93d" },
+  { from: "authn-oauth", to: "authn-jwt", label: "OIDC ID tokens are JWTs", color: "#ff8c42" },
+  { from: "authn-totp", to: "verify-hmac", label: "TOTP is built on HMAC-SHA1", color: "#ffd93d" },
+  { from: "authn-kerberos", to: "tls-aead", label: "Kerberos uses AES-256 (same cipher family as TLS)", color: "#00d4aa" },
+  { from: "authn-radius", to: "pki-x509", label: "EAP-TLS uses X.509 certs for Wi-Fi auth", color: "#7c5cfc" },
+  { from: "authn-device", to: "authn-smartcard", label: "TPM and smart cards both use hardware-bound keys", color: "#ff8c42" },
+  { from: "authn-apikeys", to: "verify-hmac", label: "AWS Sig V4 signs requests with HMAC", color: "#ffd93d" },
+
+  // Modern ↔ Others
+  { from: "modern-wg", to: "tls-ecdhe", label: "Both use X25519 Diffie-Hellman", color: "#00d4aa" },
+  { from: "modern-dpop", to: "authn-oauth", label: "DPoP binds OAuth tokens to a key", color: "#ff8c42" },
+  { from: "modern-nts", to: "authn-kerberos", label: "Both depend on accurate time (NTS secures it)", color: "#ff8c42" },
+  { from: "modern-age", to: "verify-gpg", label: "age replaces PGP for file encryption", color: "#ffd93d" },
+  { from: "modern-noise", to: "tls-ecdhe", label: "Noise and TLS both use DH key exchange", color: "#00d4aa" },
+
+  // Web Security ↔ Other branches
+  { from: "websec-xss", to: "websec-csp", label: "CSP mitigates XSS by blocking inline scripts", color: "#e91e8c" },
+  { from: "websec-csrf", to: "websec-cookies", label: "SameSite cookie attribute is primary CSRF defence", color: "#e91e8c" },
+  { from: "websec-cors", to: "websec-sop", label: "CORS is a controlled relaxation of SOP", color: "#e91e8c" },
+  { from: "websec-xss", to: "websec-trusted-types", label: "Trusted Types enforces safe DOM sinks against XSS", color: "#e91e8c" },
+  { from: "websec-sqli", to: "authn-passwords", label: "SQLi can bypass password checks — use parameterised queries", color: "#ff8c42" },
+  { from: "websec-ssrf", to: "supply-secrets", label: "SSRF can steal cloud credentials from metadata endpoint", color: "#ff6b6b" },
+  { from: "websec-sri", to: "pki-chain", label: "SRI hash verification complements TLS for third-party assets", color: "#7c5cfc" },
+  { from: "websec-waf", to: "websec-appsec", label: "WAF blocks common AppSec attacks at the edge", color: "#00d4aa" },
+  { from: "websec-cookies", to: "authn-session", label: "Session tokens stored in HttpOnly Secure SameSite cookies", color: "#ff8c42" },
+  { from: "websec-csp", to: "websec-browser", label: "CSP is enforced by the browser's security model", color: "#7c5cfc" },
+  { from: "websec-csrf", to: "authn-oauth", label: "CSRF state parameter prevents OAuth CSRF attacks", color: "#ff8c42" },
+];
+
+// ─── State ───
+let notes = {};
+let nodeTags = {};
+let collapsed = {};
+let scale = 0.7;
+let panX = 0, panY = 0;
+let isDragging = false, dragStartX, dragStartY, panStartX, panStartY;
+let activeFilter = null;
+let currentNoteNode = null;
+let showCrossLinks = true;
+
+try {
+  const saved = sessionStorage?.getItem?.('mindmap-notes-v2');
+  if (saved) notes = JSON.parse(saved);
+  const savedTags = sessionStorage?.getItem?.('mindmap-tags-v2');
+  if (savedTags) nodeTags = JSON.parse(savedTags);
+} catch(e) {}
+
+const saveNotes = () => { try { sessionStorage?.setItem?.('mindmap-notes-v2', JSON.stringify(notes)); } catch(e) {} };
+const saveTags = () => { try { sessionStorage?.setItem?.('mindmap-tags-v2', JSON.stringify(nodeTags)); } catch(e) {} };
+
+const world = document.getElementById('world');
+const canvas = document.getElementById('canvas');
+const svg = document.getElementById('connections');
+const crossSvg = document.getElementById('crosslinks');
+
+// ─── SVG arrowhead marker definitions ───
+const ARROW_COLORS = ['#00d4aa','#7c5cfc','#ffd93d','#ff6b6b','#00bfff','#ff8c42','#ff9ff3','#e91e8c'];
+function initArrowMarkers() {
+  const defs = document.createElementNS('http://www.w3.org/2000/svg', 'defs');
+  ARROW_COLORS.forEach(color => {
+    const id = 'arrow-' + color.replace('#','');
+    const marker = document.createElementNS('http://www.w3.org/2000/svg', 'marker');
+    marker.setAttribute('id', id);
+    marker.setAttribute('viewBox', '0 0 10 10');
+    marker.setAttribute('refX', '8');
+    marker.setAttribute('refY', '5');
+    marker.setAttribute('markerWidth', '7');
+    marker.setAttribute('markerHeight', '7');
+    marker.setAttribute('orient', 'auto-start-reverse');
+    const arrow = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    arrow.setAttribute('d', 'M 0 1 L 9 5 L 0 9 Z');
+    arrow.setAttribute('fill', color);
+    marker.appendChild(arrow);
+    defs.appendChild(marker);
+  });
+  crossSvg.appendChild(defs);
+}
+initArrowMarkers();
+
+// ─── Build node data lookup ───
+const nodeData = {};
+const nodeElements = {};
+nodes.forEach(n => { nodeData[n.id] = n; });
+
+// ─── Build cross-link lookup per node ───
+const crossLinksByNode = {};
+crossLinks.forEach(cl => {
+  if (!crossLinksByNode[cl.from]) crossLinksByNode[cl.from] = [];
+  if (!crossLinksByNode[cl.to]) crossLinksByNode[cl.to] = [];
+  crossLinksByNode[cl.from].push({ target: cl.to, label: cl.label });
+  crossLinksByNode[cl.to].push({ target: cl.from, label: cl.label });
+});
+
+// ─── Build node elements ───
+nodes.forEach(n => {
+  const el = document.createElement('div');
+  const levelClass = n.level === 'root' ? 'root-node' : `l${n.level}`;
+  el.className = `node ${levelClass} ${n.theme ? 'theme-' + n.theme : ''}`;
+  el.id = `node-${n.id}`;
+  el.style.left = n.x + 'px';
+  el.style.top = n.y + 'px';
+
+  const children = nodes.filter(c => c.parent === n.id);
+  const titleText = n.title.replace(/\n/g, '<br>');
+  const exampleHtml = n.example ? `<div class="node-example">${n.example}</div>` : '';
+
+  el.innerHTML = `
+    <div class="node-title">${titleText}</div>
+    ${n.sub ? `<div class="node-subtitle">${n.sub}</div>` : ''}
+    ${exampleHtml}
+    ${children.length ? `<span class="expand-indicator">${children.length} ▸</span>` : ''}
+    ${notes[n.id] ? '<span class="note-indicator">📝</span>' : ''}
+  `;
+
+  el.addEventListener('click', (e) => { e.stopPropagation(); openNotePanel(n.id); });
+  el.addEventListener('dblclick', (e) => { e.stopPropagation(); toggleCollapse(n.id); });
+
+  world.appendChild(el);
+  nodeElements[n.id] = el;
+});
+
+// ─── Draw parent-child connections ───
+function drawConnections() {
+  svg.innerHTML = '';
+  nodes.forEach(n => {
+    if (!n.parent) return;
+    const parentEl = nodeElements[n.parent];
+    const childEl = nodeElements[n.id];
+    if (!parentEl || !childEl) return;
+    if (childEl.style.display === 'none' || parentEl.style.display === 'none') return;
+
+    const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    const px = parseInt(parentEl.style.left) + parentEl.offsetWidth / 2;
+    const py = parseInt(parentEl.style.top) + parentEl.offsetHeight / 2;
+    const cx = parseInt(childEl.style.left) + childEl.offsetWidth / 2;
+    const cy = parseInt(childEl.style.top) + childEl.offsetHeight / 2;
+
+    line.setAttribute('x1', px); line.setAttribute('y1', py);
+    line.setAttribute('x2', cx); line.setAttribute('y2', cy);
+
+    const colors = { tls:'#00d4aa', pki:'#7c5cfc', verify:'#ffd93d', supply:'#ff6b6b', git:'#00bfff', modern:'#ff9ff3', authn:'#ff8c42', websec:'#e91e8c', appsec:'#ff6b6b', browser:'#7c5cfc', netdef:'#00d4aa' };
+    line.style.stroke = colors[n.theme] || '#2a3444';
+    line.dataset.theme = n.theme;
+    line.dataset.parent = n.parent;
+    line.dataset.child = n.id;
+    svg.appendChild(line);
+  });
+}
+
+// ─── Draw cross-domain connections (with arrowheads + hover tooltip) ───
+const tooltip = document.getElementById('cl-tooltip');
+const ttHeader = document.getElementById('cl-tt-header');
+const ttLabel = document.getElementById('cl-tt-label');
+
+function showTooltip(e, cl) {
+  const from = nodeData[cl.from];
+  const to = nodeData[cl.to];
+  ttHeader.innerHTML = `<span style="color:${cl.color}">${from.title.replace(/\n/,' ')}</span> <span style="opacity:0.6">uses / depends on</span> <span style="color:${cl.color}">${to.title.replace(/\n/,' ')}</span>`;
+  ttLabel.textContent = cl.label;
+  tooltip.classList.add('show');
+  moveTooltip(e);
+}
+function moveTooltip(e) {
+  let x = e.clientX + 14, y = e.clientY - 10;
+  if (x + 270 > window.innerWidth) x = e.clientX - 280;
+  if (y + 80 > window.innerHeight) y = e.clientY - 80;
+  tooltip.style.left = x + 'px';
+  tooltip.style.top = y + 'px';
+}
+function hideTooltip() { tooltip.classList.remove('show'); }
+
+function drawCrossLinks() {
+  // Remove old paths (keep defs)
+  crossSvg.querySelectorAll('path').forEach(p => p.remove());
+
+  crossLinks.forEach((cl, i) => {
+    const fromEl = nodeElements[cl.from];
+    const toEl = nodeElements[cl.to];
+    if (!fromEl || !toEl) return;
+    if (fromEl.style.display === 'none' || toEl.style.display === 'none') return;
+
+    const fx = parseInt(fromEl.style.left) + fromEl.offsetWidth / 2;
+    const fy = parseInt(fromEl.style.top) + fromEl.offsetHeight / 2;
+    const tx = parseInt(toEl.style.left) + toEl.offsetWidth / 2;
+    const ty = parseInt(toEl.style.top) + toEl.offsetHeight / 2;
+
+    const dx = tx - fx;
+    const dy = ty - fy;
+    const len = Math.sqrt(dx*dx + dy*dy);
+
+    // Shorten endpoint so arrowhead lands near node edge (not center)
+    const edgeOffset = Math.min(38, len * 0.15);
+    const atx = tx - (dx / len) * edgeOffset;
+    const aty = ty - (dy / len) * edgeOffset;
+
+    // Control point perpendicular to midpoint for a gentle arc
+    const mx = (fx + atx) / 2;
+    const my = (fy + aty) / 2;
+    const offset = Math.min(90, len * 0.22);
+    const cpx = mx + (-dy / len) * offset;
+    const cpy = my + (dx / len) * offset;
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('d', `M ${fx} ${fy} Q ${cpx} ${cpy} ${atx} ${aty}`);
+    path.style.stroke = cl.color;
+    path.setAttribute('marker-end', `url(#arrow-${cl.color.replace('#','')})`);
+    path.dataset.from = cl.from;
+    path.dataset.to = cl.to;
+    path.dataset.idx = i;
+    if (showCrossLinks) path.classList.add('visible');
+
+    // Hover interaction
+    path.addEventListener('mouseenter', (e) => {
+      if (!showCrossLinks) return;
+      path.classList.add('hovered');
+      showTooltip(e, cl);
+    });
+    path.addEventListener('mousemove', moveTooltip);
+    path.addEventListener('mouseleave', () => {
+      path.classList.remove('hovered');
+      hideTooltip();
+    });
+
+    crossSvg.appendChild(path);
+  });
+}
+
+// ─── Collapse / Expand ───
+function getDescendants(id) {
+  const desc = [];
+  nodes.filter(n => n.parent === id).forEach(c => { desc.push(c.id); desc.push(...getDescendants(c.id)); });
+  return desc;
+}
+
+function toggleCollapse(id) {
+  collapsed[id] = !collapsed[id];
+  getDescendants(id).forEach(d => { nodeElements[d].style.display = collapsed[id] ? 'none' : ''; });
+  const indicator = nodeElements[id].querySelector('.expand-indicator');
+  if (indicator) {
+    const count = nodes.filter(c => c.parent === id).length;
+    indicator.textContent = collapsed[id] ? `${count} ▸` : `${count} ▾`;
+  }
+  drawConnections();
+  drawCrossLinks();
+}
+
+// ─── Note Panel ───
+function openNotePanel(id) {
+  const n = nodeData[id];
+  currentNoteNode = id;
+  document.getElementById('note-panel').classList.add('open');
+  document.getElementById('note-node-title').textContent = n.title.replace(/\n/g, ' ');
+  document.getElementById('note-node-desc').textContent = n.desc;
+  document.getElementById('note-textarea').value = notes[id] || '';
+
+  // Build connections list
+  const connEl = document.getElementById('note-connections');
+  const links = crossLinksByNode[id] || [];
+  if (links.length) {
+    let html = '<strong>Connected to:</strong><br>';
+    links.forEach(l => {
+      const target = nodeData[l.target];
+      if (target) {
+        html += `<span class="note-conn-link" data-target="${l.target}">${target.title.replace(/\n/g,' ')}</span> — <span style="color:var(--text-dim);font-size:10px">${l.label}</span><br>`;
+      }
+    });
+    connEl.innerHTML = html;
+    connEl.style.display = '';
+  } else {
+    connEl.innerHTML = '';
+    connEl.style.display = 'none';
+  }
+
+  // Click handler for connected node links
+  connEl.querySelectorAll('.note-conn-link').forEach(link => {
+    link.addEventListener('click', () => {
+      const target = link.dataset.target;
+      openNotePanel(target);
+      // Pan to the target node
+      const targetNode = nodeData[target];
+      if (targetNode) {
+        const rect = canvas.getBoundingClientRect();
+        panX = rect.width / 2 - targetNode.x * scale;
+        panY = rect.height / 2 - targetNode.y * scale;
+        updateTransform();
+      }
+    });
+  });
+
+  // Highlight cross-links for this node
+  if (showCrossLinks) {
+    crossSvg.querySelectorAll('path').forEach(p => {
+      const isRelated = p.dataset.from === id || p.dataset.to === id;
+      p.classList.toggle('highlight', isRelated);
+      p.classList.toggle('visible', !isRelated && showCrossLinks);
+    });
+  }
+
+  document.querySelectorAll('.note-tag').forEach(t => {
+    t.classList.toggle('active', (nodeTags[id] || []).includes(t.dataset.tag));
+  });
+
+  Object.values(nodeElements).forEach(el => el.classList.remove('highlight'));
+  nodeElements[id].classList.add('highlight');
+}
+
+document.getElementById('note-panel-close').addEventListener('click', () => {
+  document.getElementById('note-panel').classList.remove('open');
+  Object.values(nodeElements).forEach(el => el.classList.remove('highlight'));
+  crossSvg.querySelectorAll('path').forEach(p => {
+    p.classList.remove('highlight');
+    p.classList.toggle('visible', showCrossLinks);
+  });
+  currentNoteNode = null;
+});
+
+document.getElementById('note-textarea').addEventListener('input', (e) => {
+  if (currentNoteNode) {
+    notes[currentNoteNode] = e.target.value;
+    saveNotes();
+    const indicator = nodeElements[currentNoteNode].querySelector('.note-indicator');
+    if (e.target.value && !indicator) {
+      nodeElements[currentNoteNode].insertAdjacentHTML('beforeend', '<span class="note-indicator">📝</span>');
+    } else if (!e.target.value && indicator) {
+      indicator.remove();
+    }
+  }
+});
+
+document.querySelectorAll('.note-tag').forEach(tag => {
+  tag.addEventListener('click', () => {
+    if (!currentNoteNode) return;
+    if (!nodeTags[currentNoteNode]) nodeTags[currentNoteNode] = [];
+    const t = tag.dataset.tag;
+    const idx = nodeTags[currentNoteNode].indexOf(t);
+    if (idx >= 0) { nodeTags[currentNoteNode].splice(idx, 1); tag.classList.remove('active'); }
+    else { nodeTags[currentNoteNode].push(t); tag.classList.add('active'); }
+    saveTags();
+  });
+});
+
+// ─── Pan & Zoom ───
+function updateTransform() {
+  world.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+  document.getElementById('zoom-level').textContent = Math.round(scale * 100) + '%';
+}
+
+canvas.addEventListener('mousedown', (e) => {
+  if (e.target.closest('.node')) return;
+  isDragging = true;
+  canvas.classList.add('dragging');
+  dragStartX = e.clientX; dragStartY = e.clientY;
+  panStartX = panX; panStartY = panY;
+});
+window.addEventListener('mousemove', (e) => {
+  if (!isDragging) return;
+  panX = panStartX + (e.clientX - dragStartX);
+  panY = panStartY + (e.clientY - dragStartY);
+  updateTransform();
+});
+window.addEventListener('mouseup', () => { isDragging = false; canvas.classList.remove('dragging'); });
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? 0.9 : 1.1;
+  const newScale = Math.max(0.15, Math.min(3, scale * delta));
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  panX = mx - (mx - panX) * (newScale / scale);
+  panY = my - (my - panY) * (newScale / scale);
+  scale = newScale;
+  updateTransform();
+}, { passive: false });
+
+// ─── Fit View ───
+function fitView() {
+  const visibleNodes = nodes.filter(n => nodeElements[n.id].style.display !== 'none');
+  if (!visibleNodes.length) return;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  visibleNodes.forEach(n => {
+    minX = Math.min(minX, n.x);
+    maxX = Math.max(maxX, n.x + 280);
+    minY = Math.min(minY, n.y);
+    maxY = Math.max(maxY, n.y + 100);
+  });
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+  const contentW = maxX - minX + 120;
+  const contentH = maxY - minY + 120;
+  scale = Math.min(w / contentW, h / contentH, 1.5);
+  scale = Math.max(0.2, Math.min(1.2, scale));
+  panX = (w - contentW * scale) / 2 - minX * scale;
+  panY = (h - contentH * scale) / 2 - minY * scale;
+  updateTransform();
+}
+
+// ─── Toggle cross-links ───
+function setCrossLinkVisibility(visible) {
+  showCrossLinks = visible;
+  const btn = document.getElementById('btn-crosslinks');
+  btn.classList.toggle('active', visible);
+  btn.textContent = visible ? 'Hide Cross-Links' : 'Show Cross-Links';
+  document.getElementById('cb-crosslinks').checked = visible;
+  if (!visible) hideTooltip();
+  crossSvg.querySelectorAll('path').forEach(p => {
+    p.classList.remove('highlight', 'hovered');
+    p.classList.toggle('visible', visible);
+  });
+}
+
+document.getElementById('btn-crosslinks').addEventListener('click', () => setCrossLinkVisibility(!showCrossLinks));
+document.getElementById('cb-crosslinks').addEventListener('change', (e) => setCrossLinkVisibility(e.target.checked));
+
+// ─── Toolbar buttons ───
+document.getElementById('btn-fit').addEventListener('click', fitView);
+
+document.getElementById('btn-collapse').addEventListener('click', () => {
+  nodes.filter(n => n.level === 1).forEach(n => { if (!collapsed[n.id]) toggleCollapse(n.id); });
+});
+
+document.getElementById('btn-expand').addEventListener('click', () => {
+  nodes.filter(n => n.level === 1).forEach(n => { if (collapsed[n.id]) toggleCollapse(n.id); });
+});
+
+document.getElementById('btn-export').addEventListener('click', () => {
+  let md = '# Cryptographic Engineering — Study Notes\n\n';
+  md += `Exported: ${new Date().toLocaleDateString()}\n\n`;
+  nodes.forEach(n => {
+    if (notes[n.id] || (nodeTags[n.id] && nodeTags[n.id].length)) {
+      const indent = n.level === 'root' ? '##' : n.level === 1 ? '###' : '####';
+      md += `${indent} ${n.title.replace(/\n/g, ' ')}\n`;
+      if (nodeTags[n.id]?.length) md += `Tags: ${nodeTags[n.id].join(', ')}\n`;
+      if (notes[n.id]) md += `\n${notes[n.id]}\n`;
+      md += '\n';
+    }
+  });
+  // Also export cross-link relationships
+  md += '## Cross-Domain Connections\n\n';
+  crossLinks.forEach(cl => {
+    const from = nodeData[cl.from]; const to = nodeData[cl.to];
+    if (from && to) md += `- **${from.title.replace(/\n/g,' ')}** → **${to.title.replace(/\n/g,' ')}**: ${cl.label}\n`;
+  });
+  if (md.split('\n').length < 5) { alert('No notes to export yet!'); return; }
+  const blob = new Blob([md], { type: 'text/markdown' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'crypto-study-notes.md';
+  a.click();
+});
+
+// ─── Search ───
+document.getElementById('search-box').addEventListener('input', (e) => {
+  const query = e.target.value.toLowerCase().trim();
+  if (!query) {
+    Object.values(nodeElements).forEach(el => { el.classList.remove('highlight', 'dimmed'); el.style.display = ''; });
+    svg.querySelectorAll('line').forEach(l => l.classList.remove('highlight', 'dimmed'));
+    crossSvg.querySelectorAll('path').forEach(p => { p.classList.remove('dimmed'); p.classList.toggle('visible', showCrossLinks); });
+    return;
+  }
+  const matchSet = new Set();
+  nodes.forEach(n => {
+    const matches = n.title.toLowerCase().includes(query) || n.sub.toLowerCase().includes(query) || n.desc.toLowerCase().includes(query) || (n.example && n.example.toLowerCase().includes(query));
+    if (matches) matchSet.add(n.id);
+    nodeElements[n.id].classList.toggle('highlight', matches);
+    nodeElements[n.id].classList.toggle('dimmed', !matches);
+  });
+  svg.querySelectorAll('line').forEach(l => l.classList.add('dimmed'));
+  crossSvg.querySelectorAll('path').forEach(p => {
+    const related = matchSet.has(p.dataset.from) || matchSet.has(p.dataset.to);
+    p.classList.toggle('visible', related);
+    p.classList.toggle('dimmed', !related);
+  });
+});
+
+// ─── Legend filter ───
+document.querySelectorAll('.legend-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const theme = item.dataset.theme;
+    if (activeFilter === theme) {
+      activeFilter = null;
+      nodes.forEach(n => { nodeElements[n.id].classList.remove('dimmed'); nodeElements[n.id].style.display = ''; });
+      svg.querySelectorAll('line').forEach(l => l.classList.remove('dimmed', 'highlight'));
+      crossSvg.querySelectorAll('path').forEach(p => { p.classList.remove('dimmed', 'highlight'); p.classList.toggle('visible', showCrossLinks); });
+      document.querySelectorAll('.legend-item').forEach(i => i.style.opacity = '');
+    } else {
+      activeFilter = theme;
+      const themeNodes = new Set();
+      nodes.forEach(n => {
+        const match = n.theme === theme || n.level === 'root';
+        if (match) themeNodes.add(n.id);
+        nodeElements[n.id].classList.toggle('dimmed', !match);
+      });
+      svg.querySelectorAll('line').forEach(l => {
+        l.classList.toggle('dimmed', l.dataset.theme !== theme);
+        l.classList.toggle('highlight', l.dataset.theme === theme);
+      });
+      // Show cross-links that connect TO this theme
+      crossSvg.querySelectorAll('path').forEach(p => {
+        const related = themeNodes.has(p.dataset.from) || themeNodes.has(p.dataset.to);
+        p.classList.toggle('visible', related && showCrossLinks);
+        p.classList.toggle('dimmed', !related);
+        p.classList.toggle('highlight', related && showCrossLinks);
+      });
+      document.querySelectorAll('.legend-item').forEach(i => { i.style.opacity = i.dataset.theme === theme ? '' : '0.4'; });
+    }
+  });
+});
+
+// ─── Init ───
+drawConnections();
+drawCrossLinks();
+fitView();
+</script>
+</body>
+</html>

