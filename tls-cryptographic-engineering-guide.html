@@ -1221,18 +1221,75 @@ TLS 1.3:  TLS_AES_256_GCM_SHA384
 <p>But "plaintext" means anyone on the network path can see exactly which site you're connecting to — ISPs, firewalls, nation-state censors. Even with HTTPS everywhere, SNI leaks your browsing destinations.</p>
 
 <h3>Encrypted Client Hello (ECH)</h3>
-<p>ECH (the successor to ESNI) encrypts the entire ClientHello — not just the SNI. It works by having the server publish a public key in DNS (via HTTPS resource records). The client encrypts its real ClientHello with this key and wraps it inside an outer ClientHello addressed to a "client-facing server" (typically a CDN). The CDN decrypts the inner ClientHello and routes to the real backend.</p>
+<p>ECH (the successor to ESNI) hides the real ClientHello inside an encrypted <em>inner</em> ClientHello. The network still sees an <em>outer</em> ClientHello so routing can happen, but privacy-sensitive fields from the real handshake, including the true SNI, are carried in the encrypted inner one. In practice, this is usually deployed with a client-facing server such as a CDN that publishes ECH configuration via HTTPS/SVCB DNS records.</p>
 
-<pre>Without ECH:
-  Observer sees → ClientHello { SNI: "secret-site.example.com" }
+<div class="diagram">
+  <div class="diagram-title">ECH Request Path</div>
+  <div class="visual-flow">
+    <div class="vf-step">
+      <div class="vf-icon green">&#127760;</div>
+      <div class="vf-body">
+        <div class="vf-title">1. Browser gets HTTPS record + ECH config</div>
+        <div class="vf-desc">Client resolves the site's HTTPS/SVCB DNS record and learns the public-facing name and ECH configuration published for that deployment.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon yellow">&#128274;</div>
+      <div class="vf-body">
+        <div class="vf-title">2. Browser sends an outer ClientHello</div>
+        <div class="vf-desc">The visible handshake targets the client-facing server. An observer can still see an outer hello, but not the real destination hostname carried inside the encrypted inner hello.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon purple">&#9729;</div>
+      <div class="vf-body">
+        <div class="vf-title">3. CDN / client-facing server decrypts the inner hello</div>
+        <div class="vf-desc">Using the published ECH configuration, the edge decrypts the inner ClientHello, learns the real SNI, and selects the correct backend certificate and origin route.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon blue">&#128737;</div>
+      <div class="vf-body">
+        <div class="vf-title">4. TLS continues with the real backend identity</div>
+        <div class="vf-desc">The origin still proves possession of the correct private key through the normal TLS handshake. ECH hides metadata; it does not remove certificate validation.</div>
+      </div>
+    </div>
+  </div>
+</div>
 
-With ECH:
-  Observer sees → ClientHello { SNI: "cdn.cloudflare.net" }
-  Inner (encrypted) → ClientHello { SNI: "secret-site.example.com" }
+<details>
+  <summary>Concrete Example — What the Network Sees vs. What the CDN Sees</summary>
+  <div class="detail-content">
+<pre>
+Goal: reach https://secret-site.example.com through a CDN.
+
+1. Browser resolves HTTPS records and learns an ECH config.
+2. Browser sends:
+
+   Outer ClientHello (visible on path)
+     public_name = "cdn.example.net"
+     supported_versions = TLS 1.3
+     alpn = ["h2", "h3"]
+
+   Inner ClientHello (encrypted)
+     server_name = "secret-site.example.com"
+     alpn = ["h2"]
+     key_share = X25519(...)
+
+3. Observer on the network:
+   Sees only that you are connecting to the CDN's public-facing name.
+
+4. Client-facing server:
+   Decrypts the inner hello and routes the request to secret-site.example.com.
 </pre>
+  </div>
+</details>
 
 <div class="info-box warning">
-  <strong>ECH deployment status:</strong> Still not universally deployed. Cloudflare has rolled it out for their customers. ECH is enabled by default in Chrome since version 117 (September 2023) and Firefox since version 119 (October 2023) — it is no longer behind flags in either browser. The main remaining constraints are server-side deployment and the dependency on DNS-over-HTTPS for fetching the ECH config securely — without DoH, the ECH public key in DNS could be stripped by a network attacker.
+  <strong>ECH deployment status:</strong> Still conditional rather than universal. Cloudflare supports ECH on its edge, and Chrome's current enterprise documentation says actual use depends on server support, availability of the HTTPS DNS record, and rollout status. In practice, secure DNS matters: if a network attacker can tamper with DNS, they can interfere with ECH discovery and force fallback.
 </div>
 
 
@@ -1499,10 +1556,10 @@ Both sides now authenticated at the TLS layer.
 <p>BeyondCorp (Google's zero trust model) and similar architectures use client certificates to authenticate devices. Every corporate device gets a certificate from an internal CA. Network access decisions are based on device identity (from the cert) + user identity + device health, rather than "are you on the VPN?"</p>
 
 <h4>API Authentication</h4>
-<p>Financial services (PSD2/Open Banking), healthcare (FHIR APIs), and government systems commonly require mTLS for API access. The client cert replaces or supplements API keys, providing cryptographic proof of client identity that can't be stolen by logging or shoulder-surfing.</p>
+<p>Financial services (PSD2/Open Banking), healthcare (FHIR APIs), and government systems commonly require mTLS for API access. The client cert replaces or supplements API keys, providing stronger cryptographic client identity and making accidental leakage via logs, screenshots, or copy/paste much less likely than bearer secrets.</p>
 
 <h4>IoT Device Authentication</h4>
-<p>Each device gets a unique client certificate provisioned at manufacturing time. When the device connects to the cloud backend, mTLS proves the device's identity. AWS IoT Core, Azure IoT Hub, and Google Cloud IoT all support this pattern.</p>
+<p>Each device gets a unique client certificate provisioned at manufacturing time. When the device connects to the cloud backend, mTLS proves the device's identity. AWS IoT Core and Azure IoT Hub support this pattern. Google Cloud IoT Core used to, but Google retired it on August 16, 2023; the pattern still shows up in custom MQTT brokers and other managed IoT platforms.</p>
 
 <details>
   <summary>mTLS with nginx — Configuration Example</summary>
@@ -1702,7 +1759,44 @@ example.com. IN CAA 0 iodef "mailto:security@example.com"
 <p>Standard bearer tokens (like OAuth access tokens) have a fundamental problem: if someone steals the token, they can use it from anywhere. There's no cryptographic binding between the token and the legitimate client. Two mechanisms attempt to fix this:</p>
 
 <h3>DPoP (Demonstrating Proof of Possession)</h3>
-<p>DPoP (RFC 9449) binds OAuth tokens to a client's key pair. When requesting a token, the client generates an ephemeral key pair and includes a signed proof in the request. The authorization server binds the issued token to that public key. On every API call, the client must include a fresh DPoP proof signed with the same key.</p>
+<p>DPoP (RFC 9449) binds OAuth tokens to a client-held asymmetric key pair. The client creates or provisions a DPoP key pair and includes a signed proof JWT with the token request. The authorization server binds the issued access token to that public key, typically via a JWK thumbprint confirmation (<code>cnf.jkt</code>). On every protected API call, the client must include a fresh DPoP proof signed with the same key.</p>
+
+<div class="diagram">
+  <div class="diagram-title">DPoP Token Binding Flow</div>
+  <div class="visual-flow">
+    <div class="vf-step">
+      <div class="vf-icon green">&#128273;</div>
+      <div class="vf-body">
+        <div class="vf-title">1. Client generates a proof key pair</div>
+        <div class="vf-desc">This key pair belongs to the OAuth client instance. The private key stays on the client and is used only to sign DPoP proof JWTs.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon yellow">&#128221;</div>
+      <div class="vf-body">
+        <div class="vf-title">2. Token request carries a signed DPoP proof</div>
+        <div class="vf-desc">The proof JWT covers the HTTP method and token endpoint URI. The authorization server verifies the signature and binds the new token to the client's public key.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon blue">&#128196;</div>
+      <div class="vf-body">
+        <div class="vf-title">3. Access token contains proof-of-possession binding</div>
+        <div class="vf-desc">If the token is a JWT, the binding is often represented in <code>cnf.jkt</code>. If the token is opaque, the resource server can learn the binding via introspection.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon purple">&#128737;</div>
+      <div class="vf-body">
+        <div class="vf-title">4. Every API call includes a fresh proof</div>
+        <div class="vf-desc">The client sends both the token and a new DPoP proof containing <code>htm</code>, <code>htu</code>, <code>iat</code>, and for resource access, <code>ath</code>. Replay gets much harder because the proof is request-specific and time-bound.</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <pre>
 Without DPoP:
@@ -1714,12 +1808,62 @@ With DPoP:
                  → Token is useless without the key
 
 Flow:
-  1. Client generates ephemeral key pair (kc_pub, kc_priv)
+  1. Client generates proof key pair (kc_pub, kc_priv)
   2. Client → Auth Server: token request + DPoP Proof (JWT signed by kc_priv)
-  3. Auth Server → Client: access_token (bound to kc_pub via "cnf" claim)
+  3. Auth Server → Client: access_token (bound to kc_pub via "cnf.jkt" or equivalent token metadata)
   4. Client → API: access_token + fresh DPoP Proof (signed by kc_priv)
   5. API verifies: DPoP proof signature matches the key in the token's "cnf" claim
 </pre>
+
+<details>
+  <summary>Concrete Example — Token Request and Protected API Call</summary>
+  <div class="detail-content">
+<pre>
+# Token request to authorization server
+POST /token HTTP/1.1
+Host: auth.example.com
+DPoP: eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Li4ufX0...
+
+# Decoded DPoP proof payload:
+{
+  "jti": "1b0f6a1c-8d7e-4a9f-8c8f-70f9f5d87c55",
+  "htm": "POST",
+  "htu": "https://auth.example.com/token",
+  "iat": 1775025600
+}
+
+# Authorization server issues an access token bound to the proof key.
+# If the access token is itself a JWT, it often contains:
+{
+  "cnf": {
+    "jkt": "BASE64URL(SHA-256(JWK))"
+  }
+}
+
+# Protected resource request
+GET /v1/payments HTTP/1.1
+Host: api.example.com
+Authorization: DPoP eyJhbGciOiJFUzI1NiIs...
+DPoP: eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Li4ufX0...
+
+# Decoded API-call proof payload:
+{
+  "jti": "2f57a0d2-0b5a-4f22-b1a1-2d5db8a97fd0",
+  "htm": "GET",
+  "htu": "https://api.example.com/v1/payments",
+  "iat": 1775025605,
+  "ath": "BASE64URL(SHA-256(access_token))"
+}
+
+# Resource server checks:
+# - DPoP signature is valid
+# - htm/htu match this exact request
+# - proof is fresh (iat/jti)
+# - ath matches the presented access token
+# - token binding matches the public key used in the DPoP proof
+</pre>
+  </div>
+</details>
 
 <h3>Token Binding (Deprecated but Conceptually Important)</h3>
 <p>Token Binding was an earlier attempt that operated at the TLS layer — it bound tokens to the TLS connection's key material. The client generated a key pair tied to the TLS session, and tokens were bound to that key. It was more comprehensive than DPoP but required TLS extension support from both sides, which proved too difficult to deploy. Chrome removed support in 2020. DPoP is the spiritual successor that works at the application layer instead.</p>
@@ -4016,7 +4160,7 @@ const valid = await argon2.verify(hash, 'password');  // true/false
       <div class="vf-icon blue">&#128195;</div>
       <div class="vf-body">
         <div class="vf-title">4. App exchanges code + verifier for tokens</div>
-        <div class="vf-desc"><code>POST /token { code, code_verifier, client_secret }</code><br>IdP verifies: <code>SHA-256(code_verifier) == code_challenge</code> → issues access token + ID token.</div>
+        <div class="vf-desc"><code>POST /token { code, code_verifier, client_secret? }</code><br>IdP verifies: <code>SHA-256(code_verifier) == code_challenge</code>. Public clients (SPA/mobile) rely on PKCE and do <em>not</em> use a client secret. Confidential web apps also authenticate the client, for example with a client secret or <code>private_key_jwt</code>.</div>
       </div>
     </div>
     <div class="vf-connector"></div>
@@ -4026,6 +4170,28 @@ const valid = await argon2.verify(hash, 'password');  // true/false
         <div class="vf-title">5. App verifies the ID token (OIDC)</div>
         <div class="vf-desc">ID token is a JWT signed by the IdP (RS256 or ES256). App fetches IdP's public keys from JWKS endpoint → verifies signature → reads user identity from claims (<code>sub</code>, <code>email</code>).</div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="diagram">
+  <div class="diagram-title">OAuth Client Types — Same PKCE, Different Trust Boundaries</div>
+  <div class="side-compare">
+    <div class="compare-box">
+      <div class="compare-title"><span class="dot green"></span> Public Client (SPA / Native App)</div>
+      <p style="font-size:13px; color:var(--text-dim);">
+        Runs on a user-controlled device or in the browser.<br><br>
+        Uses Authorization Code + PKCE.<br><br>
+        No durable client secret can be trusted here, so the token request is typically:<br><code>POST /token { code, code_verifier }</code>
+      </p>
+    </div>
+    <div class="compare-box">
+      <div class="compare-title"><span class="dot green"></span> Confidential Client (Server Web App)</div>
+      <p style="font-size:13px; color:var(--text-dim);">
+        Runs on your backend and can protect credentials.<br><br>
+        Often still uses Authorization Code + PKCE for defense in depth.<br><br>
+        The backend also authenticates itself at the token endpoint:<br><code>POST /token { code, code_verifier, client_secret or private_key_jwt }</code>
+      </p>
     </div>
   </div>
 </div>
@@ -4154,7 +4320,44 @@ Authentication:
 </pre>
 
 <h3>OPAQUE — The Modern Standard</h3>
-<p>OPAQUE (Oblivious Pseudorandom Functions-based Authenticated Key Exchange) is the IETF draft (RFC-to-be) that improves on SRP. It uses Oblivious PRFs — a cryptographic primitive where the server helps the client derive a key from the password without learning what the password is, and without the client learning the server's secret.</p>
+<p>OPAQUE (Oblivious Pseudorandom Functions-based Authenticated Key Exchange, RFC 9807) is the modern standardized augmented PAKE that improves on SRP. It uses Oblivious PRFs — a primitive where the server helps the client derive key material from the password without learning the password, and without the client learning the server's secret.</p>
+
+<div class="diagram">
+  <div class="diagram-title">OPAQUE Login Flow (High Level)</div>
+  <div class="visual-flow">
+    <div class="vf-step">
+      <div class="vf-icon green">&#128221;</div>
+      <div class="vf-body">
+        <div class="vf-title">1. Registration stores an encrypted credential envelope</div>
+        <div class="vf-desc">Instead of storing a normal password hash for later offline guessing, the server stores OPAQUE-specific data: an OPRF-related record plus an envelope that the client can unlock only with the correct password.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon yellow">&#128275;</div>
+      <div class="vf-body">
+        <div class="vf-title">2. Client blinds the password during login</div>
+        <div class="vf-desc">The client sends a blinded OPRF input and an ephemeral key share. The server helps evaluate the OPRF without learning the password itself.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon purple">&#128272;</div>
+      <div class="vf-body">
+        <div class="vf-title">3. Server returns OPRF output + envelope + its key share</div>
+        <div class="vf-desc">The client unblinds the OPRF result, derives the password-based secret, unlocks the stored envelope, and verifies the server's response.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon blue">&#9989;</div>
+      <div class="vf-body">
+        <div class="vf-title">4. Both sides finish with mutual authentication</div>
+        <div class="vf-desc">Client and server prove they derived the same session secret. The result is authenticated key exchange without ever sending the password and without leaving a conventional offline password oracle in the database.</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="diagram">
   <div class="diagram-title">OPAQUE vs. Traditional Password Auth</div>
@@ -4170,16 +4373,38 @@ Authentication:
     <div class="compare-box">
       <div class="compare-title"><span class="dot green"></span> OPAQUE</div>
       <p style="font-size:13px; color:var(--text-dim);">
-        Server stores an <em>OPRF output</em> — mathematically unlinkable to the password without running the protocol live.<br><br>
-        If DB is stolen → attacker has nothing they can crack offline. The stolen data is only usable in an online attack (rate-limitable).<br><br>
+        Server stores OPAQUE-specific credential material rather than a normal password hash.<br><br>
+        If DB is stolen → attacker does not get a conventional password-verification oracle they can grind through offline; they are pushed toward online attacks that can be rate-limited and monitored.<br><br>
         Server never sees the password. Client never learns the server's secret.
       </p>
     </div>
   </div>
 </div>
 
+<details>
+  <summary>Concrete Example — Why a Breach Looks Different from Argon2id</summary>
+  <div class="detail-content">
+<pre>
+Traditional password database:
+  { user, salt, Argon2id(password, salt) }
+
+Offline attack after breach:
+  guess -> Argon2id(guess, salt) -> compare -> repeat millions of times
+
+OPAQUE-style database:
+  { user, credential envelope, OPRF-related server record, public metadata }
+
+After breach:
+  attacker does not receive a normal password hash they can iterate against
+  in a simple offline loop. To test guesses, they are pushed toward live
+  interaction with the server, where rate limits, detection, lockouts,
+  and step-up controls apply.
+</pre>
+  </div>
+</details>
+
 <div class="info-box key">
-  <strong>Adoption:</strong> SRP is deployed in Apple iCloud Keychain escrow, 1Password's authentication, and some VPN protocols. OPAQUE is still in the IETF standardization process but has implementations in Cloudflare's work and academic deployments. These are niche but important — understanding them shows depth as a crypto engineer.
+  <strong>Adoption:</strong> SRP is deployed in Apple iCloud Keychain escrow, 1Password's authentication, and some VPN protocols. OPAQUE was standardized as RFC 9807 in 2025, but deployment is still early compared with passwords, WebAuthn, or OAuth. Today it's mainly seen in research, prototype work, and selective implementation efforts rather than broad mainstream login systems.
 </div>
 
 
@@ -4923,7 +5148,7 @@ signature = HMAC-SHA256(api_key, method + path + body_hash + timestamp)
       <tr><th>Method</th><th>Factor</th><th>Core Crypto</th><th>Phish Resistant</th><th>Replay Resistant</th><th>No Server Secret</th><th>Primary Use</th></tr>
       <tr><td><strong>Password</strong></td><td>Know</td><td>Argon2id hashing</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗</td><td>Web login (baseline)</td></tr>
       <tr><td><strong>Session Token</strong></td><td>Have</td><td>CSPRNG</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent3)">✗</td><td>Web session management</td></tr>
-      <tr><td><strong>JWT</strong></td><td>Have</td><td>ECDSA / HMAC</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent)">✓ (exp)</td><td style="color:var(--accent)">✓</td><td>Stateless API auth</td></tr>
+      <tr><td><strong>JWT</strong></td><td>Have</td><td>ECDSA / HMAC</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent)">✓</td><td>Stateless API auth</td></tr>
       <tr><td><strong>API Key</strong></td><td>Have</td><td>CSPRNG + SHA-256</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗</td><td>Machine-to-machine</td></tr>
       <tr><td><strong>Magic Link</strong></td><td>Have (email)</td><td>CSPRNG + JWT sig</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent)">✓ (one-time)</td><td style="color:var(--accent3)">✗</td><td>Passwordless web login</td></tr>
       <tr><td><strong>TOTP</strong></td><td>Have</td><td>HMAC-SHA1</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent)">✓ (30s)</td><td style="color:var(--accent3)">✗</td><td>MFA second factor</td></tr>
@@ -4931,8 +5156,8 @@ signature = HMAC-SHA256(api_key, method + path + body_hash + timestamp)
       <tr><td><strong>SSH Key</strong></td><td>Have</td><td>Ed25519 / RSA</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Server / git access</td></tr>
       <tr><td><strong>mTLS Client Cert</strong></td><td>Have</td><td>ECDSA / RSA (TLS)</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Service-to-service, API</td></tr>
       <tr><td><strong>Smart Card / PIV</strong></td><td>Have + Know (PIN)</td><td>ECDSA / RSA (on-chip)</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Government, high-security</td></tr>
-      <tr><td><strong>OAuth 2.0 + OIDC</strong></td><td>Delegated</td><td>ECDSA (ID token) + PKCE</td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Social login, API delegation</td></tr>
-      <tr><td><strong>SAML</strong></td><td>Delegated</td><td>RSA XML DSig</td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Enterprise SSO</td></tr>
+      <tr><td><strong>OAuth 2.0 + OIDC</strong></td><td>Delegated</td><td>ECDSA (ID token) + PKCE</td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent)">✓</td><td>Social login, API delegation</td></tr>
+      <tr><td><strong>SAML</strong></td><td>Delegated</td><td>RSA XML DSig</td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent)">✓</td><td>Enterprise SSO</td></tr>
       <tr><td><strong>Kerberos</strong></td><td>Know (initial)</td><td>AES-256-CTS-HMAC</td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent)">✓ (timestamps)</td><td style="color:var(--accent)">✓ (tickets)</td><td>Windows domain auth</td></tr>
       <tr><td><strong>NTLM</strong></td><td>Know</td><td>MD4 + HMAC-MD5</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗ (relay)</td><td style="color:var(--accent3)">✗</td><td>Legacy Windows (avoid)</td></tr>
       <tr><td><strong>RADIUS + EAP-TLS</strong></td><td>Have (cert)</td><td>TLS (mTLS inner)</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Network (Wi-Fi, VPN)</td></tr>
@@ -4941,6 +5166,10 @@ signature = HMAC-SHA256(api_key, method + path + body_hash + timestamp)
       <tr><td><strong>Device Trust (TPM)</strong></td><td>Have (device)</td><td>TPM ECDSA + mTLS</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Zero trust / BYOD control</td></tr>
     </table>
   </div>
+</div>
+
+<div class="info-box note">
+  <strong>JWT nuance:</strong> A signed JWT is not automatically replay resistant. If it's used as a bearer token, anyone who steals it can replay it until it expires. Replay resistance comes from sender-constraining the token with mechanisms like DPoP or mTLS, not from the JWT signature alone.
 </div>
 
 <h3>Decision Tree — Choosing an Auth Method</h3>
