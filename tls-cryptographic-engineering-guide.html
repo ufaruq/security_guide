@@ -756,9 +756,13 @@
       <span style="font-size:16px;">🔓</span>
       <div><div style="font-weight:700;">Web App Security</div><div style="font-size:10px;opacity:0.7;">OWASP, injections, XSS & CSRF</div></div>
     </a>
-    <a href="browser-security.html" target="_blank" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(124,92,252,0.08);border:1px solid rgba(124,92,252,0.25);border-radius:7px;color:#7c5cfc;text-decoration:none;font-size:12px;transition:all 0.15s;" onmouseover="this.style.background='rgba(124,92,252,0.16)'" onmouseout="this.style.background='rgba(124,92,252,0.08)'">
+    <a href="browser-security.html" target="_blank" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(124,92,252,0.08);border:1px solid rgba(124,92,252,0.25);border-radius:7px;color:#7c5cfc;text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(124,92,252,0.16)'" onmouseout="this.style.background='rgba(124,92,252,0.08)'">
       <span style="font-size:16px;">🛡️</span>
       <div><div style="font-weight:700;">Browser Security</div><div style="font-size:10px;opacity:0.7;">CSP, CORS, cookies & isolation</div></div>
+    </a>
+    <a href="cloud-security.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.25);border-radius:7px;color:var(--accent);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(0,212,170,0.16)'" onmouseout="this.style.background='rgba(0,212,170,0.08)'">
+      <span style="font-size:16px;">&#9729;</span>
+      <div><div style="font-weight:700;">Cloud Security</div><div style="font-size:10px;opacity:0.7;">AWS &amp; GCP security guide</div></div>
     </a>
   </div>
   <div class="section-label">TLS Deep Dive</div>
@@ -831,6 +835,8 @@
   <a href="#phase4">Phase 4: Implementation</a>
   <a href="#phase5">Phase 5: Applied</a>
   <a href="#phase6">Phase 6: Career</a>
+  <div class="section-label">References</div>
+  <a href="#sources">Primary Sources</a>
 </nav>
 
 <main>
@@ -1195,7 +1201,7 @@ TLS 1.3:  TLS_AES_256_GCM_SHA384
 <p>For each link in the chain: take the issuer's public key and verify the signature on the issued cert. Concretely, the client hashes the cert's TBS (To Be Signed) data and checks the signature against the issuer's public key. If the math doesn't check out, the cert has been tampered with or wasn't really signed by that issuer.</p>
 
 <h3>Step 3: Validity Period</h3>
-<p>Check that the current time falls within each cert's <code>notBefore</code> and <code>notAfter</code> window. Certificates currently max out at 398 days for public TLS (Apple/Google enforce this), and there are proposals to reduce this further to 90 days.</p>
+<p>Check that the current time falls within each cert's <code>notBefore</code> and <code>notAfter</code> window. Certificates currently max out at 398 days for public TLS (Apple/Google enforce this), and the CA/Browser Forum approved ballot SC-081 (March 2025) to progressively reduce maximum lifetime: 200 days by March 2026, 100 days by March 2027, and 47 days by March 2029.</p>
 
 <h3>Step 4: Revocation Check</h3>
 <p>Check whether any cert in the chain has been revoked, via CRL or OCSP (discussed below).</p>
@@ -1208,6 +1214,94 @@ TLS 1.3:  TLS_AES_256_GCM_SHA384
 
 <h3>Step 7: CertificateVerify</h3>
 <p>This is separate from chain validation — it's the server proving it actually possesses the private key corresponding to the public key in the cert. The server signs a hash of the entire handshake transcript. Without this, someone could serve a valid cert they don't own the key for (e.g., a CDN serving a cached cert).</p>
+
+<details>
+  <summary>Lab Example — Bash / OpenSSL: Walk a Real Certificate Verification Flow</summary>
+  <div class="detail-content">
+<pre>
+HOST=example.com
+CHAIN_FILE="/tmp/${HOST}-chain.txt"
+LEAF_FILE="/tmp/${HOST}-leaf.pem"
+
+# 1. Fetch the live certificate chain from the server.
+#    -servername sends SNI so the server returns the correct leaf cert.
+printf '' | openssl s_client \
+  -connect "${HOST}:443" \
+  -servername "${HOST}" \
+  -showcerts > "${CHAIN_FILE}"
+
+# 2. Extract only the first certificate block from the chain.
+#    This is typically the leaf certificate for the hostname we requested.
+awk '
+  /BEGIN CERTIFICATE/ { printing = 1 }
+  printing { print }
+  /END CERTIFICATE/ { exit }
+' "${CHAIN_FILE}" > "${LEAF_FILE}"
+
+# 3. Inspect the fields a client cares about during validation.
+#    - subject / issuer: who this cert is for and who signed it
+#    - dates: validity window
+#    - SAN: the real hostname list used for name matching
+#    - EKU/basic constraints: is this allowed to be a TLS server cert?
+openssl x509 -in "${LEAF_FILE}" -noout \
+  -subject \
+  -issuer \
+  -dates \
+  -ext subjectAltName \
+  -ext extendedKeyUsage \
+  -ext basicConstraints
+
+# 4. Ask OpenSSL to enforce hostname verification during the handshake.
+#    If the name does not match, this fails even if the cert is otherwise valid.
+printf '' | openssl s_client \
+  -connect "${HOST}:443" \
+  -servername "${HOST}" \
+  -verify_hostname "${HOST}" \
+  -brief
+</pre>
+    <p>This lab maps directly to the checklist above: build the chain, inspect issuer and SAN, verify dates and key usage, then enforce hostname matching during the handshake.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Lab Example — Python: Fail Closed on Bad Chains or Hostnames</summary>
+  <div class="detail-content">
+<pre>
+# verify_server_cert.py
+# Standard-library example: connect like a real HTTPS client and let
+# the OS trust store + Python's ssl module enforce PKI rules.
+
+import pprint
+import socket
+import ssl
+
+HOST = "example.com"
+PORT = 443
+
+# Load the platform trust store (system roots).
+ctx = ssl.create_default_context()
+
+# Refuse connections unless the server cert chains to a trusted root.
+ctx.verify_mode = ssl.CERT_REQUIRED
+
+# Also require the requested hostname to match the SAN on the leaf cert.
+ctx.check_hostname = True
+
+with socket.create_connection((HOST, PORT), timeout=5) as tcp_sock:
+    # server_hostname is critical:
+    # - sends SNI so the server knows which cert to return
+    # - gives Python the hostname to verify against SAN entries
+    with ctx.wrap_socket(tcp_sock, server_hostname=HOST) as tls_sock:
+        print("Negotiated TLS version:", tls_sock.version())
+        print("Cipher suite:", tls_sock.cipher())
+
+        # If we got here, chain validation + hostname verification already passed.
+        print("Validated peer certificate:")
+        pprint.pprint(tls_sock.getpeercert())
+</pre>
+    <p>If the certificate is expired, signed by an unknown CA, or does not match <code>HOST</code>, Python raises <code>ssl.SSLError</code> during the handshake instead of continuing with an unsafe connection.</p>
+  </div>
+</details>
 
 
 <!-- ═══════════════════════════════════════════════ -->
@@ -1328,6 +1422,259 @@ Goal: reach https://secret-site.example.com through a CDN.
 
 <p>This breaks the end-to-end trust model. The proxy sees all traffic in plaintext — passwords, tokens, personal data. It also means the proxy must properly validate the server's real cert on Session 2, or it could silently accept a compromised server cert and tunnel the traffic through.</p>
 
+<h3>What the Proxy Actually Does</h3>
+<p>The proxy is not "cracking" a single end-to-end TLS tunnel. It is acting as the TLS endpoint on both sides. That means it terminates one TLS session from the browser, obtains the plaintext HTTP data inside the proxy, applies policy to that plaintext, then creates a completely separate TLS session to the real origin and sends the data onward.</p>
+
+<div class="diagram">
+  <div class="diagram-title">Break & Inspect Request Path</div>
+  <div class="visual-flow">
+    <div class="vf-step">
+      <div class="vf-icon green">1</div>
+      <div class="vf-body">
+        <div class="vf-title">Browser requests https://example.com</div>
+        <div class="vf-desc">On a managed network, the browser's traffic is routed through the inspection proxy instead of going straight to the origin server.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon yellow">2</div>
+      <div class="vf-body">
+        <div class="vf-title">Proxy presents a cert for example.com signed by the corporate CA</div>
+        <div class="vf-desc">Because the device already trusts the organization's root CA, the browser accepts this proxy-issued leaf certificate as valid for <code>example.com</code>.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon purple">3</div>
+      <div class="vf-body">
+        <div class="vf-title">Browser and proxy derive TLS session keys for Session 1</div>
+        <div class="vf-desc">From the browser's point of view, the proxy is the HTTPS server. TLS records are encrypted on the wire, but the proxy can decrypt them because it is one endpoint of that session.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon red">4</div>
+      <div class="vf-body">
+        <div class="vf-title">Proxy decrypts, inspects, logs, or blocks the plaintext</div>
+        <div class="vf-desc">Inside the proxy process, the HTTP request exists in plaintext in memory after TLS record decryption. This is where DLP, malware scanning, URL categorization, and policy enforcement happen.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon blue">5</div>
+      <div class="vf-body">
+        <div class="vf-title">Proxy opens a second TLS session to the real origin</div>
+        <div class="vf-desc">Now the proxy becomes the client. It validates the origin's real certificate, negotiates a second set of TLS keys, and re-encrypts the request for the real server.</div>
+      </div>
+    </div>
+    <div class="vf-connector"></div>
+    <div class="vf-step">
+      <div class="vf-icon green">6</div>
+      <div class="vf-body">
+        <div class="vf-title">Response takes the reverse path</div>
+        <div class="vf-desc">The origin's response is decrypted inside the proxy, optionally inspected again, and then re-encrypted back to the browser using the browser-proxy session keys.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h3>Why the Browser Trusts the Proxy's Certificate</h3>
+<pre>
+Managed device trust store:
+  Corporate Root CA   ← installed by MDM / Group Policy / endpoint management
+
+Proxy presents:
+  Leaf certificate for example.com
+  Issuer = Corporate Root CA (or a corporate intermediate)
+
+Browser builds chain:
+  example.com leaf → corporate intermediate/root → trusted local root store
+
+Result:
+  Browser accepts the cert because:
+    1. Hostname matches example.com
+    2. Signature chains to a locally trusted CA
+    3. Validity / EKU checks pass
+</pre>
+
+<p>This is why the lock icon can still appear in the browser even though the browser is no longer authenticating the public certificate that <code>example.com</code> would normally present on the open internet.</p>
+
+<h3>What "Decrypts and Re-encrypts" Means</h3>
+<p>The traffic is still encrypted on both network hops. Plaintext exists only inside the proxy after one TLS session is terminated and before the bytes are written into the second TLS session.</p>
+
+<pre>
+Browser
+  -- TLS records encrypted with key set A -->
+Proxy
+  -- decrypt with key set A -->
+  HTTP plaintext in proxy memory
+  -- inspect / log / block / modify -->
+  -- encrypt with key set B -->
+Origin server
+</pre>
+
+<p>So the proxy is not "forwarding ciphertext unchanged." It is translating between two independent cryptographic channels:</p>
+
+<pre>
+Session 1: Browser  ⇄  Proxy   (proxy acts as TLS server)
+Session 2: Proxy    ⇄  Origin  (proxy acts as TLS client)
+</pre>
+
+<div class="info-box warning">
+  <strong>Why Session 2 validation matters:</strong> The browser can only validate Session 1. It has no direct visibility into whether the proxy safely validated the real origin certificate on Session 2. If the proxy skips hostname checks, trusts the wrong roots, or accepts a weak / malicious cert upstream, the browser may still show a trusted connection because it only sees the corporate-issued certificate.
+</div>
+
+<details>
+  <summary>Concrete Failure Mode — How a Bad Upstream Validation Policy Hides Risk</summary>
+  <div class="detail-content">
+<pre>
+1. Browser connects to proxy for https://example.com
+2. Proxy presents a corporate-issued cert for example.com
+3. Browser trusts it because corporate root CA is installed locally
+4. Proxy connects upstream to "example.com"
+5. If the proxy wrongly accepts:
+     - a cert for the wrong hostname
+     - a cert signed by an unapproved CA
+     - an expired cert
+     - a malicious cert from an attacker on the path
+6. Browser does not see that mistake directly
+7. Browser still shows a trusted Session 1 to the proxy
+
+So the trust boundary has moved:
+  from "browser authenticates origin directly"
+  to   "browser authenticates proxy, and proxy authenticates origin"
+</pre>
+  </div>
+</details>
+
+<details>
+  <summary>Lab Example — Bash / OpenSSL: Inspect the Real Origin Cert the Proxy Should Validate</summary>
+  <div class="detail-content">
+<pre>
+HOST=example.com
+
+# Show the real certificate chain from the public site
+printf '' | openssl s_client \
+  -connect "${HOST}:443" \
+  -servername "${HOST}" \
+  -showcerts
+
+# Ask OpenSSL to verify that the hostname matches
+printf '' | openssl s_client \
+  -connect "${HOST}:443" \
+  -servername "${HOST}" \
+  -verify_hostname "${HOST}" \
+  -brief
+
+# Send a simple HTTPS request over a fresh TLS session
+REQUEST=$'GET / HTTP/1.1\r\nHost: example.com\r\nConnection: close\r\n\r\n'
+printf '%s' "$REQUEST" | openssl s_client \
+  -connect "${HOST}:443" \
+  -servername "${HOST}" \
+  -quiet
+</pre>
+    <p>The last command illustrates what Session 2 looks like from the proxy's perspective: it behaves like a normal TLS client, negotiates its own session keys, and sends HTTP over that separate channel.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Lab Example — Python: Observe Plaintext After TLS Termination</summary>
+  <div class="detail-content">
+<pre>
+# lab_tls_terminator.py
+# For a local lab only. Assumes you already have a lab cert/key pair.
+
+import socket
+import ssl
+
+LISTEN_HOST = "127.0.0.1"
+LISTEN_PORT = 8443
+CERT_FILE = "lab-proxy-cert.pem"
+KEY_FILE = "lab-proxy-key.pem"
+
+server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+server_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+server_ctx.load_cert_chain(CERT_FILE, KEY_FILE)
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM, 0) as listener:
+    listener.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    listener.bind((LISTEN_HOST, LISTEN_PORT))
+    listener.listen(5)
+    print(f"Listening on https://{LISTEN_HOST}:{LISTEN_PORT}")
+
+    client_tcp, addr = listener.accept()
+    print("TCP client:", addr)
+
+    with client_tcp:
+        with server_ctx.wrap_socket(client_tcp, server_side=True) as browser_tls:
+            print("Session 1 established:", browser_tls.version())
+            request_bytes = browser_tls.recv(8192)
+
+            print("----- Plaintext visible inside proxy after decryption -----")
+            print(request_bytes.decode("iso-8859-1", errors="replace"))
+
+            response = (
+                b"HTTP/1.1 200 OK\r\n"
+                b"Content-Type: text/plain\r\n"
+                b"Content-Length: 26\r\n"
+                b"\r\n"
+                b"hello from lab terminator\n"
+            )
+            browser_tls.sendall(response)
+</pre>
+    <p>This demonstrates the critical point: the request is encrypted on the wire, but after <code>wrap_socket(..., server_side=True)</code> terminates TLS, the proxy code receives ordinary plaintext HTTP bytes.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Lab Example — Python: Validate Upstream Cert and Re-encrypt to the Origin</summary>
+  <div class="detail-content">
+<pre>
+# lab_upstream_tls.py
+# This models the proxy's "Session 2" leg to the real server.
+
+import socket
+import ssl
+from pprint import pprint
+
+HOST = "example.com"
+PORT = 443
+
+request_bytes = (
+    f"GET / HTTP/1.1\r\n"
+    f"Host: {HOST}\r\n"
+    "Connection: close\r\n"
+    "\r\n"
+).encode("ascii")
+
+client_ctx = ssl.create_default_context()
+client_ctx.minimum_version = ssl.TLSVersion.TLSv1_2
+client_ctx.check_hostname = True
+client_ctx.verify_mode = ssl.CERT_REQUIRED
+
+with socket.create_connection((HOST, PORT), timeout=5) as upstream_tcp:
+    with client_ctx.wrap_socket(upstream_tcp, server_hostname=HOST) as origin_tls:
+        print("Session 2 established:", origin_tls.version())
+        print("Cipher suite:", origin_tls.cipher())
+        print("Validated peer certificate:")
+        pprint(origin_tls.getpeercert())
+
+        origin_tls.sendall(request_bytes)
+
+        chunks = []
+        while True:
+            data = origin_tls.recv(4096)
+            if not data:
+                break
+            chunks.append(data)
+
+response = b"".join(chunks)
+print(response.decode("iso-8859-1", errors="replace"))
+</pre>
+    <p>A real inspection proxy combines the two patterns: terminate TLS from the browser, inspect the plaintext in memory, then create a separate outbound TLS client connection like this one and forward the approved request. Production systems also need streaming I/O, HTTP CONNECT handling, ALPN, HTTP/2 or HTTP/3 awareness, logging controls, timeout handling, and very strict upstream certificate validation.</p>
+  </div>
+</details>
+
 
 <!-- ═══════════════════════════════════════════════ -->
 <!-- SECTION: REVOCATION                            -->
@@ -1347,6 +1694,39 @@ Goal: reach https://secret-site.example.com through a CDN.
 <p>CT doesn't prevent mis-issuance — it makes it detectable. Every publicly trusted CA must submit every cert it issues to multiple append-only CT logs before the cert is usable. The cert includes Signed Certificate Timestamps (SCTs) proving log inclusion. Browsers (Chrome especially) require SCTs and will reject certs without them.</p>
 
 <p>This means if a CA is compromised and issues a fraudulent cert for your domain, it will appear in CT logs, and monitoring services can alert you. Google's approach after DigiNotar was: "We can't prevent CAs from being compromised, but we can make it impossible to hide."</p>
+
+<details>
+  <summary>Lab Example — Bash / OpenSSL: Check for OCSP Stapling and CT Hints</summary>
+  <div class="detail-content">
+<pre>
+HOST=example.com
+
+# 1. Ask the server to staple an OCSP response into the handshake.
+#    If stapling is configured, OpenSSL prints the stapled response details.
+printf '' | openssl s_client \
+  -connect "${HOST}:443" \
+  -servername "${HOST}" \
+  -status
+
+# 2. Pull the live leaf certificate and inspect where revocation info lives.
+#    -ocsp_uri shows the responder the client would contact if no staple is present.
+printf '' | openssl s_client \
+  -connect "${HOST}:443" \
+  -servername "${HOST}" 2>/dev/null | \
+  openssl x509 -noout -ocsp_uri -text | \
+  sed -n '/Authority Information Access/,+6p'
+
+# 3. Look for embedded Signed Certificate Timestamps (SCTs) in the cert.
+#    Many public TLS certs include an SCT extension for CT compliance.
+printf '' | openssl s_client \
+  -connect "${HOST}:443" \
+  -servername "${HOST}" 2>/dev/null | \
+  openssl x509 -noout -text | \
+  sed -n '/CT Precertificate SCTs/,+12p'
+</pre>
+    <p>This gives you the practical signals behind the theory: whether stapling is active, where OCSP would be queried, and whether CT proof is embedded in the presented certificate.</p>
+  </div>
+</details>
 
 
 <!-- ═══════════════════════════════════════════════ -->
@@ -1438,7 +1818,7 @@ openssl x509 -in cert.pem -pubkey -noout | \
 </div>
 
 <div class="info-box warning">
-  <strong>Why HPKP died:</strong> HPKP let website operators send an HTTP header that told browsers to only accept specific keys for that domain for a set duration (up to 60 days). The problem: if you lost your pinned keys (server migration, key rotation mistake, CA switch), your site became permanently unreachable to browsers that had cached the pin. Worse, attackers who compromised a site could set hostile pins to hold the domain ransom ("HPKP suicide"). Chrome removed it in 2018. The concept was sound but the operational risk was too high for a web-wide standard.
+  <strong>Why HPKP died:</strong> HPKP let website operators send an HTTP header that told browsers to only accept specific keys for that domain for a set duration (up to 60 days). The problem: if you lost your pinned keys (server migration, key rotation mistake, CA switch), your site became permanently unreachable to browsers that had cached the pin. Worse, attackers who compromised a site could set hostile pins to hold the domain ransom ("HPKP suicide"). Chrome removed HPKP in Chrome 72 (January 2019). The concept was sound but the operational risk was too high for a web-wide standard.
 </div>
 
 <details>
@@ -1484,6 +1864,60 @@ let config: [String: Any] = [
 TrustKit.initSharedInstance(withConfiguration: config)
 </pre>
     <p>Native iOS also supports pinning via <code>URLSession</code> delegate method <code>urlSession(_:didReceive:completionHandler:)</code> where you manually validate the server's certificate chain against your pinned values.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Lab Example — Bash + Python: Compute a Pin and Compare It to an Expected Value</summary>
+  <div class="detail-content">
+<pre>
+# Bash: derive the SPKI pin from a PEM certificate
+CERT="cert.pem"
+
+# 1. Extract the public key from the certificate.
+# 2. Convert it to DER so we hash the canonical binary SPKI bytes.
+# 3. SHA-256 hash the SPKI.
+# 4. Base64-encode the digest in the format pinning libraries expect.
+openssl x509 -in "${CERT}" -pubkey -noout | \
+  openssl pkey -pubin -outform DER | \
+  openssl dgst -sha256 -binary | \
+  base64
+</pre>
+<pre>
+# compute_pin.py
+# Python example that shells out to OpenSSL for X.509 parsing, then compares
+# the computed SPKI pin to the pin your app expects.
+
+import base64
+import hashlib
+import subprocess
+
+CERT_FILE = "cert.pem"
+EXPECTED_PIN = "YLh1dUR9y6Kja30RrAn7JKnbQG/uEtLMkBgFF2Fuihg="
+
+# Extract the PEM-encoded public key from the certificate.
+pubkey_pem = subprocess.check_output(
+    ["openssl", "x509", "-in", CERT_FILE, "-pubkey", "-noout"]
+)
+
+# Convert the public key to DER so the hash is stable and canonical.
+pubkey_der = subprocess.check_output(
+    ["openssl", "pkey", "-pubin", "-outform", "DER"],
+    input=pubkey_pem,
+)
+
+# Compute the SPKI pin exactly the way mobile pinning frameworks do.
+actual_pin = base64.b64encode(hashlib.sha256(pubkey_der).digest()).decode("ascii")
+
+print("Computed pin:", actual_pin)
+print("Expected pin:", EXPECTED_PIN)
+
+if actual_pin != EXPECTED_PIN:
+    raise SystemExit("Pin mismatch: reject the connection")
+
+print("Pin matched: safe to continue")
+</pre>
+    <p>This is the heart of public-key pinning: do not ask "is the chain trusted?" only. Also ask "does the presented public key match the one I pinned in advance?"</p>
   </div>
 </details>
 
@@ -1552,6 +1986,425 @@ Both sides now authenticated at the TLS layer.
   <strong>SPIFFE/SPIRE:</strong> The SPIFFE standard (Secure Production Identity Framework For Everyone) defines a universal identity format for services: a URI like <code>spiffe://cluster.local/ns/payment/sa/processor</code>. SPIRE is the reference implementation — it issues short-lived X.509 certificates (SVIDs) to workloads, handles automatic rotation, and integrates with Kubernetes, AWS, and others. This is becoming the standard for service identity in cloud-native infrastructure.
 </div>
 
+<details>
+  <summary>Industry Example — GCP / GKE / Cloud Service Mesh</summary>
+  <div class="detail-content">
+    <p>One common GCP pattern is: platform teams run a mesh-enabled GKE cluster, and then application teams use Terraform to manage the namespace, workloads, and mTLS policy inside that cluster. The app code still stays unaware of TLS; Envoy sidecars and the mesh control plane handle certificate issuance, rotation, and verification.</p>
+    <p style="font-size:13px; color:var(--text-dim);">Assumption: the GKE cluster already exists and Cloud Service Mesh / Istio CRDs are installed. In many organizations, cluster bootstrap and mesh control-plane setup live in a separate Terraform stack from application namespaces and policies.</p>
+<pre>
+# Terraform: connect the Google and Kubernetes providers to an existing GKE
+# cluster, then manage the workloads and STRICT mTLS policy declaratively.
+
+terraform {
+  required_providers {
+    google = {
+      source = "hashicorp/google"
+    }
+    kubernetes = {
+      source = "hashicorp/kubernetes"
+    }
+  }
+}
+
+provider "google" {
+  project = var.project_id
+  region  = var.region
+}
+
+data "google_client_config" "current" {}
+
+data "google_container_cluster" "prod" {
+  name     = var.cluster_name
+  location = var.region
+}
+
+provider "kubernetes" {
+  host                   = "https://${data.google_container_cluster.prod.endpoint}"
+  token                  = data.google_client_config.current.access_token
+  cluster_ca_certificate = base64decode(data.google_container_cluster.prod.master_auth[0].cluster_ca_certificate)
+}
+</pre>
+<pre>
+# Terraform: label the namespace for sidecar injection, deploy two services,
+# create a sidecar-less test Pod, and enforce namespace-wide STRICT mTLS.
+
+resource "kubernetes_namespace_v1" "payments" {
+  metadata {
+    name = "payments"
+    labels = {
+      "istio-injection" = "enabled"
+    }
+  }
+}
+
+resource "kubernetes_deployment_v1" "checkout" {
+  metadata {
+    name      = "checkout"
+    namespace = kubernetes_namespace_v1.payments.metadata[0].name
+    labels = {
+      app = "checkout"
+    }
+  }
+
+  spec {
+    replicas = 2
+
+    selector {
+      match_labels = {
+        app = "checkout"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "checkout"
+        }
+      }
+
+      spec {
+        service_account_name = "checkout-sa"
+
+        container {
+          name  = "app"
+          image = "us-docker.pkg.dev/my-project/apps/checkout:2026-04-02"
+
+          port {
+            container_port = 8080
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service_v1" "checkout" {
+  metadata {
+    name      = "checkout"
+    namespace = kubernetes_namespace_v1.payments.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = "checkout"
+    }
+
+    port {
+      port        = 80
+      target_port = 8080
+    }
+  }
+}
+
+resource "kubernetes_deployment_v1" "payments_api" {
+  metadata {
+    name      = "payments-api"
+    namespace = kubernetes_namespace_v1.payments.metadata[0].name
+    labels = {
+      app = "payments-api"
+    }
+  }
+
+  spec {
+    replicas = 2
+
+    selector {
+      match_labels = {
+        app = "payments-api"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          app = "payments-api"
+        }
+      }
+
+      spec {
+        service_account_name = "payments-api-sa"
+
+        container {
+          name  = "app"
+          image = "us-docker.pkg.dev/my-project/apps/payments-api:2026-04-02"
+
+          port {
+            container_port = 8080
+          }
+        }
+      }
+    }
+  }
+}
+
+resource "kubernetes_service_v1" "payments_api" {
+  metadata {
+    name      = "payments-api"
+    namespace = kubernetes_namespace_v1.payments.metadata[0].name
+  }
+
+  spec {
+    selector = {
+      app = "payments-api"
+    }
+
+    port {
+      port        = 80
+      target_port = 8080
+    }
+  }
+}
+
+resource "kubernetes_pod_v1" "testcurl" {
+  metadata {
+    name      = "testcurl"
+    namespace = "default"
+    annotations = {
+      "sidecar.istio.io/inject" = "false"
+    }
+  }
+
+  spec {
+    container {
+      name    = "curl"
+      image   = "curlimages/curl"
+      command = ["sleep", "600"]
+    }
+  }
+}
+
+resource "kubernetes_manifest" "payments_strict_mtls" {
+  manifest = {
+    apiVersion = "security.istio.io/v1beta1"
+    kind       = "PeerAuthentication"
+    metadata = {
+      name      = "namespace-policy"
+      namespace = kubernetes_namespace_v1.payments.metadata[0].name
+    }
+    spec = {
+      mtls = {
+        mode = "STRICT"
+      }
+    }
+  }
+}
+</pre>
+<pre>
+# Runtime verification still happens after "terraform apply".
+# Terraform provisions the policy, but kubectl proves the traffic behavior.
+
+# Plain HTTP from a sidecar-less Pod should fail under STRICT mTLS.
+kubectl exec -n default testcurl -- \
+  curl -sS -o /dev/null -w '%{http_code}\n' \
+  http://payments-api.payments.svc.cluster.local:80/
+
+# In-mesh traffic should succeed because Envoy originates mTLS automatically.
+SOURCE_POD=$(kubectl get pod -n payments -l app=checkout -o jsonpath='{.items[0].metadata.name}')
+
+kubectl exec -n payments "$SOURCE_POD" -c app -- \
+  curl -sS http://payments-api.payments.svc.cluster.local:80/health
+
+# X-Forwarded-Client-Cert is a common troubleshooting signal that the mesh
+# attached workload identity and mutual TLS to the request path.
+kubectl exec -n payments "$SOURCE_POD" -c app -- \
+  curl -s http://httpbin.sample:8000/headers | \
+  grep X-Forwarded-Client-Cert
+</pre>
+    <p>Operationally, this is what teams care about on GCP: Terraform makes the namespace and policy reproducible, sidecars are injected automatically, certificates come from Cloud Service Mesh or Istiod, <code>PeerAuthentication</code> is set to <code>STRICT</code>, plaintext probes are rejected, and in-mesh calls work without any TLS code in the application itself.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Industry Example — AWS / ECS / Service Connect TLS</summary>
+  <div class="detail-content">
+    <p>On AWS in 2026, the current AWS-native pattern for ECS workloads is usually <strong>Amazon ECS Service Connect with automatic TLS</strong>. In practice, teams often express the ECS cluster, Cloud Map namespace, task definitions, and Service Connect TLS settings in Terraform, then use ECS Exec and <code>openssl</code> to verify the live certificate chain after deployment.</p>
+    <p style="font-size:13px; color:var(--text-dim);">Important context: AWS App Mesh still exists today, but AWS has announced its end of support for <strong>September 30, 2026</strong>. For new ECS-centric designs, Service Connect is the more current AWS-native example to study.</p>
+<pre>
+# Terraform: define the AWS provider plus a few local values so the example
+# stays readable. In real code these usually come from variables or modules.
+
+terraform {
+  required_providers {
+    aws = {
+      source = "hashicorp/aws"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+locals {
+  subnet_ids                = ["subnet-aaa111", "subnet-bbb222"]
+  service_security_group_id = "sg-0123456789abcdef0"
+  pca_arn                   = "arn:aws:acm-pca:us-east-1:111122223333:certificate-authority/12345678-aaaa-bbbb-cccc-1234567890ab"
+  tls_role_arn              = "arn:aws:iam::111122223333:role/ecsInfrastructureRoleForServiceConnectTLS"
+  kms_key_arn               = "arn:aws:kms:us-east-1:111122223333:key/abcd1234-abcd-1234-abcd-1234567890ab"
+}
+</pre>
+<pre>
+# Terraform: create the ECS cluster and Service Connect namespace.
+# Service Connect commonly uses a Cloud Map namespace as the service-discovery
+# boundary where short names like "payments-api" resolve for other services.
+
+resource "aws_service_discovery_http_namespace" "mesh" {
+  name = "prod.internal"
+}
+
+resource "aws_ecs_cluster" "prod" {
+  name = "prod-ecs"
+
+  service_connect_defaults {
+    namespace = aws_service_discovery_http_namespace.mesh.arn
+  }
+}
+</pre>
+<pre>
+# Terraform: server task definitions need a named port mapping.
+# Service Connect attaches to that named port and handles TLS at the proxy.
+
+resource "aws_ecs_task_definition" "payments_api" {
+  family                   = "payments-api"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = "arn:aws:iam::111122223333:role/ecsTaskExecutionRole"
+  task_role_arn            = "arn:aws:iam::111122223333:role/paymentsApiTaskRole"
+
+  container_definitions = jsonencode([
+    {
+      name      = "app"
+      image     = "111122223333.dkr.ecr.us-east-1.amazonaws.com/payments-api:2026-04-02"
+      essential = true
+      portMappings = [
+        {
+          name          = "http-api"
+          containerPort = 8080
+          protocol      = "tcp"
+          appProtocol   = "http"
+        }
+      ]
+    }
+  ])
+}
+
+resource "aws_ecs_task_definition" "checkout" {
+  family                   = "checkout"
+  network_mode             = "awsvpc"
+  requires_compatibilities = ["FARGATE"]
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = "arn:aws:iam::111122223333:role/ecsTaskExecutionRole"
+  task_role_arn            = "arn:aws:iam::111122223333:role/checkoutTaskRole"
+
+  container_definitions = jsonencode([
+    {
+      name      = "app"
+      image     = "111122223333.dkr.ecr.us-east-1.amazonaws.com/checkout:2026-04-02"
+      essential = true
+    }
+  ])
+}
+</pre>
+<pre>
+# Terraform: create the destination service with Service Connect TLS.
+# This is the key block: the managed proxy gets a named port, a discovery
+# name, and TLS settings backed by AWS Private CA.
+
+resource "aws_ecs_service" "payments_api" {
+  name                   = "payments-api"
+  cluster                = aws_ecs_cluster.prod.id
+  task_definition        = aws_ecs_task_definition.payments_api.arn
+  desired_count          = 2
+  launch_type            = "FARGATE"
+  enable_execute_command = true
+
+  network_configuration {
+    subnets          = local.subnet_ids
+    security_groups  = [local.service_security_group_id]
+    assign_public_ip = false
+  }
+
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.mesh.arn
+
+    service {
+      discovery_name = "payments-api"
+      port_name      = "http-api"
+
+      client_alias {
+        dns_name = "payments-api"
+        port     = 8080
+      }
+
+      tls {
+        issuer_cert_authority {
+          aws_pca_authority_arn = local.pca_arn
+        }
+
+        role_arn = local.tls_role_arn
+        kms_key  = local.kms_key_arn
+      }
+    }
+  }
+}
+</pre>
+<pre>
+# Terraform: create a client service in the same Service Connect namespace.
+# The checkout app still talks to "payments-api:8080"; the managed proxy
+# resolves the name and negotiates TLS on its behalf.
+
+resource "aws_ecs_service" "checkout" {
+  name                   = "checkout"
+  cluster                = aws_ecs_cluster.prod.id
+  task_definition        = aws_ecs_task_definition.checkout.arn
+  desired_count          = 2
+  launch_type            = "FARGATE"
+  enable_execute_command = true
+
+  network_configuration {
+    subnets          = local.subnet_ids
+    security_groups  = [local.service_security_group_id]
+    assign_public_ip = false
+  }
+
+  service_connect_configuration {
+    enabled   = true
+    namespace = aws_service_discovery_http_namespace.mesh.arn
+  }
+}
+</pre>
+<pre>
+# Runtime verification still happens after "terraform apply".
+# AWS docs recommend ECS Exec plus openssl to inspect the certificate
+# presented on the destination task IP and port.
+
+aws ecs execute-command \
+  --cluster prod-ecs \
+  --task TASK_ID \
+  --container app \
+  --interactive \
+  --command "/bin/sh"
+
+# Inside the shell:
+openssl s_client -connect 10.0.147.43:8080 < /dev/null 2> /dev/null | \
+  openssl x509 -noout -text
+</pre>
+<pre>
+# 6. What operators expect to see:
+#    - TLS is negotiated by the Service Connect proxy, not the app itself
+#    - SAN / issuer reflect the AWS Private CA-backed certificate chain
+#    - ECS rotates the certs automatically
+#    - application code still just talks to "payments-api:8080"
+#      using the short name in the Service Connect namespace
+</pre>
+    <p>Operationally, the AWS pattern here is similar in spirit to GCP service mesh but different in mechanics: on GCP the common example is sidecar-based Envoy on GKE with a <code>STRICT</code> mTLS policy; on AWS ECS Service Connect, Terraform manages the ECS resources and TLS settings, the managed proxy handles TLS for ECS services, certificates come from AWS Private CA, and operators verify the live certificate behavior with <code>openssl</code>.</p>
+  </div>
+</details>
+
 <h4>Zero Trust Architectures</h4>
 <p>BeyondCorp (Google's zero trust model) and similar architectures use client certificates to authenticate devices. Every corporate device gets a certificate from an internal CA. Network access decisions are based on device identity (from the cert) + user identity + device health, rather than "are you on the VPN?"</p>
 
@@ -1608,6 +2461,46 @@ Certificate chain:
     → istiod intermediate
       → Workload SVID (spiffe://cluster/ns/default/sa/my-service)
 </pre>
+  </div>
+</details>
+
+<details>
+  <summary>Lab Example — Bash / curl and Python: Make an mTLS Request</summary>
+  <div class="detail-content">
+<pre>
+URL="https://mtls.example.com/health"
+
+# curl acts as the TLS client:
+# --cert / --key    => present the client certificate and private key
+# --cacert          => trust only the CA that signed the server certificate
+# If the server requires client auth and our cert is valid, the request succeeds.
+curl \
+  --cert client.crt \
+  --key client.key \
+  --cacert server-ca.crt \
+  "${URL}"
+</pre>
+<pre>
+# mtls_client.py
+# Standard-library client example: prove possession of a client cert while
+# also validating the server's certificate.
+
+import ssl
+import urllib.request
+
+URL = "https://mtls.example.com/health"
+
+# Trust the CA that issued the server certificate.
+ctx = ssl.create_default_context(cafile="server-ca.crt")
+
+# Present our own client certificate and private key for mTLS.
+ctx.load_cert_chain(certfile="client.crt", keyfile="client.key")
+
+with urllib.request.urlopen(URL, context=ctx) as response:
+    print("HTTP status:", response.status)
+    print(response.read().decode("utf-8"))
+</pre>
+    <p>Unlike ordinary TLS, the client now proves identity during the handshake itself. If the client cert is missing, expired, or signed by the wrong CA, the handshake fails before the application sees an authenticated request.</p>
   </div>
 </details>
 
@@ -1725,6 +2618,55 @@ example.com. IN CAA 0 iodef "mailto:security@example.com"
 <div class="info-box note">
   <strong>The defense stack for domain owners:</strong> CAA records (restrict which CAs can issue) + Certificate Transparency monitoring (detect any cert issued for your domain) + HSTS preloading (prevent downgrade attacks) + short-lived certs (reduce exposure window). This layered approach doesn't depend on any single mechanism being perfect.
 </div>
+
+<details>
+  <summary>Lab Example — Bash: Query TLSA, HSTS, and CAA Records</summary>
+  <div class="detail-content">
+<pre>
+HOST=example.com
+
+# DANE / TLSA:
+# Query the TLSA record a DANE-aware client would compare against the server cert.
+dig +dnssec "_443._tcp.${HOST}" TLSA
+
+# HSTS:
+# Fetch only headers and look for the Strict-Transport-Security policy.
+curl -I "https://${HOST}" | grep -i '^strict-transport-security:'
+
+# CAA:
+# Ask DNS which certificate authorities are allowed to issue for the zone.
+dig "${HOST}" CAA +short
+</pre>
+    <p>This is a nice operational triad: DNS tells you about CA restrictions and DANE policy, while the HTTPS response tells you whether HSTS is actually being delivered to browsers.</p>
+  </div>
+</details>
+
+<details>
+  <summary>Lab Example — Python: Verify an HSTS Header Is Present</summary>
+  <div class="detail-content">
+<pre>
+# check_hsts.py
+# Quick operational check: confirm that the site is actually returning
+# the Strict-Transport-Security header over HTTPS.
+
+import ssl
+import urllib.request
+
+URL = "https://example.com/"
+
+ctx = ssl.create_default_context()
+
+with urllib.request.urlopen(URL, context=ctx) as response:
+    hsts = response.headers.get("Strict-Transport-Security")
+
+    if not hsts:
+        raise SystemExit("HSTS header missing")
+
+    print("HSTS header:", hsts)
+</pre>
+    <p>This does not check preload-list status, but it does verify the prerequisite: the site is actively serving an HSTS policy over a validated HTTPS connection.</p>
+  </div>
+</details>
 
 
 <!-- ═══════════════════════════════════════════════ -->
@@ -3658,7 +4600,7 @@ jobs:
       <tr><td><strong>OAuth 2.0 / OIDC</strong></td><td>Delegated</td><td>ECDSA (ID token), PKCE (SHA-256 hash commitment)</td><td style="color:var(--accent3)">Partial</td><td style="color:var(--accent)">No (IdP handles it)</td></tr>
       <tr><td><strong>SAML</strong></td><td>Delegated</td><td>RSA / ECDSA XML signatures</td><td style="color:var(--accent3)">Partial</td><td style="color:var(--accent)">No (IdP handles it)</td></tr>
       <tr><td><strong>mTLS Client Cert</strong></td><td>Have</td><td>RSA / ECDSA (TLS handshake)</td><td style="color:var(--accent)">Yes</td><td style="color:var(--accent)">Only pubkey</td></tr>
-      <tr><td><strong>SRP / OPAQUE</strong></td><td>Know</td><td>PAKE (Password Authenticated Key Exchange)</td><td style="color:var(--accent)">Yes</td><td style="color:var(--accent)">No (verifier only)</td></tr>
+      <tr><td><strong>SRP / OPAQUE</strong></td><td>Know</td><td>PAKE (Password Authenticated Key Exchange)</td><td style="color:var(--accent4)">Partial (mutual auth, but no browser origin binding)</td><td style="color:var(--accent)">No (verifier only)</td></tr>
     </table>
   </div>
 </div>
@@ -4432,7 +5374,7 @@ After breach:
   <div class="diagram-title">Security Property Matrix</div>
   <table>
     <tr><th>Property</th><th>Password</th><th>TOTP</th><th>WebAuthn</th><th>SSH Key</th><th>mTLS</th><th>OPAQUE</th></tr>
-    <tr><td><strong>Phishing resistant</strong></td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent3)">✗</td></tr>
+    <tr><td><strong>Phishing resistant</strong></td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent4)">Partial (mutual auth, but no browser origin binding)</td></tr>
     <tr><td><strong>No server-side secret</strong></td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td></tr>
     <tr><td><strong>Replay resistant</strong></td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent)">✓ (30s)</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td></tr>
     <tr><td><strong>Offline crack resistant</strong></td><td style="color:var(--accent4)">Partial</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td></tr>
@@ -5162,7 +6104,7 @@ signature = HMAC-SHA256(api_key, method + path + body_hash + timestamp)
       <tr><td><strong>NTLM</strong></td><td>Know</td><td>MD4 + HMAC-MD5</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗ (relay)</td><td style="color:var(--accent3)">✗</td><td>Legacy Windows (avoid)</td></tr>
       <tr><td><strong>RADIUS + EAP-TLS</strong></td><td>Have (cert)</td><td>TLS (mTLS inner)</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Network (Wi-Fi, VPN)</td></tr>
       <tr><td><strong>LDAP Bind</strong></td><td>Know</td><td>TLS transport only</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗</td><td style="color:var(--accent3)">✗</td><td>Directory auth for apps</td></tr>
-      <tr><td><strong>SRP / OPAQUE</strong></td><td>Know</td><td>DH + OPRF</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Password auth without hash storage</td></tr>
+      <tr><td><strong>SRP / OPAQUE</strong></td><td>Know</td><td>DH + OPRF</td><td style="color:var(--accent4)">Partial (mutual auth, but no browser origin binding)</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Password auth without hash storage</td></tr>
       <tr><td><strong>Device Trust (TPM)</strong></td><td>Have (device)</td><td>TPM ECDSA + mTLS</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td style="color:var(--accent)">✓</td><td>Zero trust / BYOD control</td></tr>
     </table>
   </div>
@@ -5631,6 +6573,219 @@ Common headless Chromium tells:
 <div class="info-box note">
   <strong>Credential stuffing defence:</strong> Rate limiting alone is insufficient against distributed botnets. Layer with: CAPTCHA for suspicious sessions, breached password detection (HaveIBeenPwned API), device fingerprinting, MFA prompts on unfamiliar devices.
 </div>
+
+<!-- ═══════════════════════════════════════════════ -->
+<!-- SECTION: SOURCES                               -->
+<!-- ═══════════════════════════════════════════════ -->
+
+<h2 id="sources">Primary Sources & References</h2>
+
+<p>This appendix groups the standards, specifications, and vendor documentation that support the guide above. To keep the main narrative readable, the references are organized by topic cluster rather than attached sentence-by-sentence inline.</p>
+
+<details>
+  <summary>TLS, PKI, certificate validation, revocation, ECH, mTLS, and historical attacks</summary>
+  <div class="detail-content">
+    <p style="font-size:13px; color:var(--text-dim);">Supports: overview, handshake, cipher suites, key exchange, PKI, certificate verification, SNI/ECH, TLS inspection, revocation, known attacks, and mTLS.</p>
+    <ul>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc8446">RFC 8446 - The Transport Layer Security (TLS) Protocol Version 1.3</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc7748">RFC 7748 - Elliptic Curves for Security (X25519 and X448)</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc5280">RFC 5280 - Internet X.509 Public Key Infrastructure Certificate and CRL Profile</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc6066">RFC 6066 - TLS Extensions, including Server Name Indication (SNI)</a></li>
+      <li><a href="https://datatracker.ietf.org/doc/draft-ietf-tls-esni/">IETF TLS WG draft - Encrypted Client Hello (ECH)</a></li>
+      <li><a href="https://developers.cloudflare.com/ssl/edge-certificates/ech/">Cloudflare ECH documentation</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc6960">RFC 6960 - Online Certificate Status Protocol (OCSP)</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc9162">RFC 9162 - Certificate Transparency Version 2.0</a></li>
+      <li><a href="https://heartbleed.com/">Heartbleed disclosure</a></li>
+      <li><a href="https://drownattack.com/">DROWN attack site</a></li>
+      <li><a href="https://freakattack.com/">FREAK attack site</a></li>
+      <li><a href="https://weakdh.org/">Logjam / WeakDH site</a></li>
+      <li><a href="https://robotattack.org/">ROBOT attack site</a></li>
+      <li><a href="https://raccoon-attack.com/">Raccoon attack site</a></li>
+      <li><a href="https://breachattack.com/">BREACH attack site</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc5746">RFC 5746 - TLS Renegotiation Indication Extension</a></li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary>Pinning, DANE, HSTS, CAA, signed exchanges, and proof-of-possession tokens</summary>
+  <div class="detail-content">
+    <p style="font-size:13px; color:var(--text-dim);">Supports: certificate pinning, Android/iOS pinning examples, DANE, DNSSEC, HSTS, preload, CAA, Signed HTTP Exchanges, DPoP, and Token Binding.</p>
+    <ul>
+      <li><a href="https://developer.android.com/privacy-and-security/security-config">Android Network Security Configuration</a></li>
+      <li><a href="https://github.com/datatheorem/TrustKit">TrustKit for iOS pinning</a></li>
+      <li><a href="https://spiffe.io/docs/latest/spiffe-about/overview/">SPIFFE overview</a></li>
+      <li><a href="https://spiffe.io/docs/latest/spire-about/spire-concepts/">SPIRE concepts</a></li>
+      <li><a href="https://istio.io/latest/docs/concepts/security/#mutual-tls-authentication">Istio mutual TLS documentation</a></li>
+      <li><a href="https://docs.cloud.google.com/service-mesh/v1.22/docs/overview">Google Cloud Service Mesh overview</a></li>
+      <li><a href="https://docs.cloud.google.com/service-mesh/docs/tutorials/mtls">Google Cloud Service Mesh by example: mTLS</a></li>
+      <li><a href="https://docs.cloud.google.com/service-mesh/v1.26/docs/troubleshooting/troubleshoot-security">Google Cloud Service Mesh security troubleshooting</a></li>
+      <li><a href="https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke">HashiCorp Terraform tutorial: provision GKE</a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/google/latest/docs/resources/container_cluster">Terraform Google provider: <code>google_container_cluster</code></a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/namespace_v1">Terraform Kubernetes provider: <code>kubernetes_namespace_v1</code></a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/deployment_v1">Terraform Kubernetes provider: <code>kubernetes_deployment_v1</code></a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/service_v1">Terraform Kubernetes provider: <code>kubernetes_service_v1</code></a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/pod_v1">Terraform Kubernetes provider: <code>kubernetes_pod_v1</code></a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/kubernetes/latest/docs/resources/manifest">Terraform Kubernetes provider: <code>kubernetes_manifest</code></a></li>
+      <li><a href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-connect.html">Amazon ECS Service Connect overview</a></li>
+      <li><a href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-connect-tls.html">Amazon ECS Service Connect traffic encryption</a></li>
+      <li><a href="https://docs.aws.amazon.com/AmazonECS/latest/developerguide/enable-service-connect-tls.html">Enabling TLS for Amazon ECS Service Connect</a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_cluster">Terraform AWS provider: <code>aws_ecs_cluster</code></a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_task_definition">Terraform AWS provider: <code>aws_ecs_task_definition</code></a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service">Terraform AWS provider: <code>aws_ecs_service</code></a></li>
+      <li><a href="https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/service_discovery_http_namespace">Terraform AWS provider: <code>aws_service_discovery_http_namespace</code></a></li>
+      <li><a href="https://docs.aws.amazon.com/app-mesh/latest/userguide/troubleshooting-best-practices.html">AWS App Mesh end-of-support notice</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc6698">RFC 6698 - The DNS-Based Authentication of Named Entities (DANE) TLSA Profile</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc7672">RFC 7672 - SMTP Security via Opportunistic DANE TLS</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc4033">RFC 4033 - DNS Security Introduction and Requirements</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc6797">RFC 6797 - HTTP Strict Transport Security (HSTS)</a></li>
+      <li><a href="https://hstspreload.org/">HSTS preload service</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc8659">RFC 8659 - DNS Certification Authority Authorization (CAA)</a></li>
+      <li><a href="https://web.dev/articles/signed-exchanges">web.dev - Signed Exchanges (SXG)</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc9449">RFC 9449 - OAuth 2.0 Demonstrating Proof-of-Possession at the Application Layer (DPoP)</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc8471">RFC 8471 - Token Binding over HTTP</a></li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary>Modern cryptography, MACs, AEAD, and digital signatures</summary>
+  <div class="detail-content">
+    <p style="font-size:13px; color:var(--text-dim);">Supports: age, MLS, HMAC, Poly1305, EdDSA, and the digital signature fundamentals used throughout the guide.</p>
+    <ul>
+      <li><a href="https://age-encryption.org/v1">The age encryption format specification</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc9420">RFC 9420 - Messaging Layer Security (MLS)</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc2104">RFC 2104 - HMAC: Keyed-Hashing for Message Authentication</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc8439">RFC 8439 - ChaCha20 and Poly1305 for IETF Protocols</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc8032">RFC 8032 - Edwards-Curve Digital Signature Algorithm (EdDSA)</a></li>
+      <li><a href="https://csrc.nist.gov/pubs/fips/186-5/final">FIPS 186-5 - Digital Signature Standard (DSS)</a></li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary>Code signing, application verification, package verification, OpenPGP, and Sigstore</summary>
+  <div class="detail-content">
+    <p style="font-size:13px; color:var(--text-dim);">Supports: Apple, Windows, Android, package-manager verification, GPG / PGP, and Sigstore keyless signing.</p>
+    <ul>
+      <li><a href="https://support.apple.com/en-ae/guide/security/sec7c917bf14/web">Apple Platform Security - App code signing process in iOS-family platforms</a></li>
+      <li><a href="https://support.apple.com/en-kg/guide/security/sec3ad8e6e53/1/web/1">Apple Platform Security - App code signing process in macOS</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/install/authenticode">Microsoft Authenticode digital signatures</a></li>
+      <li><a href="https://developer.android.com/studio/publish/app-signing">Android Developers - Sign your app</a></li>
+      <li><a href="https://developer.android.com/tools/apksigner">Android Developers - apksigner</a></li>
+      <li><a href="https://manpages.debian.org/experimental/apt/apt-secure.8.en.html">Debian apt-secure(8)</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc9580">RFC 9580 - OpenPGP</a></li>
+      <li><a href="https://docs.sigstore.dev/">Sigstore documentation overview</a></li>
+      <li><a href="https://docs.sigstore.dev/about/tooling/">Sigstore tooling overview</a></li>
+      <li><a href="https://docs.sigstore.dev/cosign/signing/overview/">Sigstore keyless signing overview</a></li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary>Supply chain security, SBOMs, Git signing, branch protection, secrets, CI/CD, and organizational playbooks</summary>
+  <div class="detail-content">
+    <p style="font-size:13px; color:var(--text-dim);">Supports: supply-chain threat modeling, SLSA, SBOMs, Git signing, Git hardening, branch protection, secrets management, CI/CD hardening, and the organizational playbook.</p>
+    <ul>
+      <li><a href="https://slsa.dev/spec/v1.2/">SLSA specification v1.2</a></li>
+      <li><a href="https://spdx.dev/use/specifications/">SPDX specifications</a></li>
+      <li><a href="https://cyclonedx.org/specification/overview/">CycloneDX specification overview</a></li>
+      <li><a href="https://csrc.nist.gov/pubs/sp/800/218/final">NIST SP 800-218 - Secure Software Development Framework (SSDF)</a></li>
+      <li><a href="https://git-scm.com/book/en/v2/Git-Tools-Signing-Your-Work.html">Git - Signing Your Work</a></li>
+      <li><a href="https://git-scm.com/docs/git-config/2.51.1.html">git-config documentation (GPG / X.509 / SSH signing options)</a></li>
+      <li><a href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-protected-branches/about-protected-branches">GitHub Docs - About protected branches</a></li>
+      <li><a href="https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/about-rulesets">GitHub Docs - About rulesets</a></li>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Secrets_Management_Cheat_Sheet.html">OWASP Secrets Management Cheat Sheet</a></li>
+      <li><a href="https://docs.github.com/en/actions/how-tos/secure-your-work/security-harden-deployments">GitHub Actions - Security hardening your deployments</a></li>
+      <li><a href="https://docs.github.com/en/actions/concepts/security/openid-connect">GitHub Actions - OpenID Connect</a></li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary>Web and mobile authentication: passwords, sessions, JWTs, SSH, TOTP, WebAuthn, OAuth, OIDC, SAML, PAKEs, API keys, magic links, and device trust</summary>
+  <div class="detail-content">
+    <p style="font-size:13px; color:var(--text-dim);">Supports: authentication overview, password hashing, session cookies, JWTs, SSH, MFA / TOTP, WebAuthn / passkeys, OAuth 2.0, OIDC, SAML, SRP / OPAQUE, API keys, magic links, and device trust / continuous authentication.</p>
+    <ul>
+      <li><a href="https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html">OWASP Password Storage Cheat Sheet</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc9106">RFC 9106 - Argon2 Memory-Hard Function for Password Hashing</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc6265">RFC 6265 - HTTP State Management Mechanism</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc7519">RFC 7519 - JSON Web Token (JWT)</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc8725">RFC 8725 - JSON Web Token Best Current Practices</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc4252">RFC 4252 - SSH Authentication Protocol</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc4253">RFC 4253 - SSH Transport Layer Protocol</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc6238">RFC 6238 - TOTP: Time-Based One-Time Password Algorithm</a></li>
+      <li><a href="https://www.w3.org/TR/webauthn-3/">W3C Web Authentication Level 3</a></li>
+      <li><a href="https://passkeys.dev/docs/intro/what-are-passkeys/">passkeys.dev - What are passkeys?</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc6749">RFC 6749 - The OAuth 2.0 Authorization Framework</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc6750">RFC 6750 - OAuth 2.0 Bearer Token Usage</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc7636">RFC 7636 - Proof Key for Code Exchange by OAuth Public Clients (PKCE)</a></li>
+      <li><a href="https://openid.net/specs/openid-connect-core-1_0-18.html">OpenID Connect Core 1.0</a></li>
+      <li><a href="https://docs.oasis-open.org/security/saml/v2.0/saml-core-2.0-os.pdf">OASIS SAML 2.0 Core specification</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc2945">RFC 2945 - The SRP Authentication and Key Exchange System</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc9807.html">RFC 9807 - OPAQUE</a></li>
+      <li><a href="https://docs.cloud.google.com/docs/authentication/api-keys-best-practices">Google Cloud - API key best practices</a></li>
+      <li><a href="https://auth0.com/docs/authenticate/passwordless/authentication-methods/email-magic-link">Auth0 - Passwordless authentication with magic links</a></li>
+      <li><a href="https://csrc.nist.gov/pubs/sp/800/207/final">NIST SP 800-207 - Zero Trust Architecture</a></li>
+      <li><a href="https://www.beyondcorp.com/">Google BeyondCorp</a></li>
+      <li><a href="https://developer.android.com/google/play/integrity/overview">Android Developers - Play Integrity API overview</a></li>
+      <li><a href="https://developer.apple.com/documentation/devicecheck/accessing-and-modifying-per-device-data">Apple DeviceCheck documentation</a></li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary>Enterprise and network authentication: Kerberos, NTLM, RADIUS, LDAP, and smart cards / PIV</summary>
+  <div class="detail-content">
+    <p style="font-size:13px; color:var(--text-dim);">Supports: Kerberos, Active Directory, NTLM, relay mitigations, RADIUS, EAP-TLS, LDAP, and smart card / PIV concepts.</p>
+    <ul>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc4120">RFC 4120 - Kerberos Network Authentication Service (V5)</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/entra/identity/authentication/kerberos">Microsoft Learn - Introduction to Microsoft Entra Kerberos</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/troubleshoot/windows-server/windows-security/ntlm-user-authentication">Microsoft Learn - NTLM user authentication</a></li>
+      <li><a href="https://learn.microsoft.com/en-us/windows/win32/wsw/extended-protection">Microsoft Learn - Extended Protection</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc2865">RFC 2865 - RADIUS</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc9190">RFC 9190 - EAP-TLS 1.3</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc4511">RFC 4511 - LDAP: The Protocol</a></li>
+      <li><a href="https://pages.nist.gov/FIPS201/FIPS201.html">FIPS 201-3 - Personal Identity Verification (PIV)</a></li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary>Network defense, firewalls, CDN security, and bot detection</summary>
+  <div class="detail-content">
+    <p style="font-size:13px; color:var(--text-dim);">Supports: WAFs, DDoS mitigation, firewalls and segmentation, CDN security, cache behavior, bot detection, JA3, webdriver detection, and credential-stuffing defenses.</p>
+    <ul>
+      <li><a href="https://developers.cloudflare.com/waf/">Cloudflare WAF documentation</a></li>
+      <li><a href="https://docs.aws.amazon.com/waf/">AWS WAF documentation</a></li>
+      <li><a href="https://www.rfc-editor.org/rfc/rfc4987">RFC 4987 - TCP SYN Flooding Attacks and Common Mitigations</a></li>
+      <li><a href="https://csrc.nist.gov/pubs/sp/800/41/r1/final">NIST SP 800-41 Rev. 1 - Guidelines on Firewalls and Firewall Policy</a></li>
+      <li><a href="https://developers.cloudflare.com/cache/">Cloudflare Cache / CDN documentation</a></li>
+      <li><a href="https://www.cloudflare.com/ips/">Cloudflare IP ranges</a></li>
+      <li><a href="https://developers.cloudflare.com/bots/">Cloudflare bot solutions documentation</a></li>
+      <li><a href="https://github.com/salesforce/ja3">JA3 TLS fingerprinting project</a></li>
+      <li><a href="https://developer.mozilla.org/en-US/docs/Web/API/Navigator/webdriver">MDN - navigator.webdriver</a></li>
+      <li><a href="https://haveibeenpwned.com/API/v3">Have I Been Pwned API v3</a></li>
+    </ul>
+  </div>
+</details>
+
+<details>
+  <summary>Roadmap and further study references</summary>
+  <div class="detail-content">
+    <p style="font-size:13px; color:var(--text-dim);">Supports: the study roadmap, implementation projects, protocol reading list, post-quantum section, and long-term learning directions.</p>
+    <ul>
+      <li><a href="https://csrc.nist.gov/pubs/fips/197/final">FIPS 197 - Advanced Encryption Standard (AES)</a></li>
+      <li><a href="https://csrc.nist.gov/pubs/fips/180-4/upd1/final">FIPS 180-4 - Secure Hash Standard (SHA-2)</a></li>
+      <li><a href="https://noiseprotocol.org/noise.html">The Noise Protocol Framework</a></li>
+      <li><a href="https://cryptopals.com/">Cryptopals Crypto Challenges</a></li>
+      <li><a href="https://csrc.nist.gov/projects/post-quantum-cryptography">NIST Post-Quantum Cryptography project</a></li>
+      <li><a href="https://openquantumsafe.org/">Open Quantum Safe (liboqs)</a></li>
+      <li><a href="https://eprint.iacr.org/">IACR ePrint Archive</a></li>
+      <li><a href="https://rwc.iacr.org/">Real World Crypto</a></li>
+    </ul>
+  </div>
+</details>
 
 </main>
 

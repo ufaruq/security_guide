@@ -434,6 +434,7 @@
   <a href="crypto-mind-map.html" target="_blank">🗺️ Interactive Mind Map</a>
   <a href="web-app-security.html" target="_blank">🔓 Web App Security</a>
   <a href="browser-security.html" target="_blank">🛡️ Browser Security</a>
+  <a href="cloud-security.html" target="_blank">&#9729; Cloud Security</a>
 </div>
 
 <div class="app">
@@ -969,7 +970,7 @@ const sections = [
       },
       {
         id: "appsec-sqli", title: "SQL Injection",
-        concepts: "User input concatenated into SQL query allows attackers to alter query logic. In-band: results returned in response. Blind boolean: true/false conditions infer data one bit at a time. Time-based blind: WAITFOR/sleep() as an out-of-band channel. Fix: parameterised queries (prepared statements) — the ONLY reliable defence. ORMs use parameterised queries by default; don't bypass with raw string interpolation.",
+        concepts: "User input concatenated into SQL query allows attackers to alter query logic. In-band: results returned in response. Blind boolean: true/false conditions infer data one bit at a time. Time-based blind: WAITFOR/sleep() as an inference side-channel (response timing reveals true/false conditions). Fix: parameterised queries (prepared statements) — the ONLY reliable defence. ORMs use parameterised queries by default; don't bypass with raw string interpolation.",
         prompts: [
           "Why does parameterisation prevent SQL injection while input validation alone does not?",
           "Describe the difference between in-band and blind time-based SQL injection.",

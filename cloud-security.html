@@ -1,0 +1,1776 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cloud Security Reference — AWS & GCP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --surface: #131925;
+  --surface2: #1a2233;
+  --border: #2a3444;
+  --accent: #00d4aa;
+  --accent2: #7c5cfc;
+  --accent3: #ff6b6b;
+  --accent4: #ffd93d;
+  --text: #e0e6ed;
+  --text-dim: #8892a4;
+  --text-bright: #ffffff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; overflow-x: hidden; }
+
+nav { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 0; overflow-y: auto; z-index: 100; }
+nav h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); padding: 0 20px; margin-bottom: 20px; }
+nav a { display: block; padding: 10px 20px; color: var(--text-dim); text-decoration: none; font-size: 14px; border-left: 3px solid transparent; transition: all 0.2s; }
+nav a:hover, nav a.active { color: var(--text-bright); background: rgba(0,212,170,0.05); border-left-color: var(--accent); }
+nav .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 16px 20px 6px; opacity: 0.6; }
+
+main { margin-left: 260px; max-width: 900px; padding: 40px 60px 100px; }
+h1 { font-size: 42px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+.subtitle { font-size: 18px; color: var(--text-dim); margin-bottom: 48px; }
+h2 { font-size: 28px; font-weight: 700; color: var(--text-bright); margin-top: 64px; margin-bottom: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+h3 { font-size: 20px; font-weight: 600; color: var(--accent); margin-top: 32px; margin-bottom: 12px; }
+h4 { font-size: 16px; font-weight: 600; color: var(--accent2); margin-top: 24px; margin-bottom: 8px; }
+p { margin-bottom: 16px; }
+a { color: var(--accent); }
+code { background: var(--surface2); padding: 2px 7px; border-radius: 4px; font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 14px; color: var(--accent4); }
+pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; overflow-x: auto; font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 13px; line-height: 1.6; margin: 16px 0; color: var(--text); }
+
+.info-box { border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-size: 14px; }
+.info-box.warning { background: rgba(255,107,107,0.1); border-left: 3px solid var(--accent3); }
+.info-box.note { background: rgba(0,212,170,0.08); border-left: 3px solid var(--accent); }
+.info-box.key { background: rgba(124,92,252,0.1); border-left: 3px solid var(--accent2); }
+.info-box strong { color: var(--text-bright); }
+
+table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+th { background: var(--surface2); padding: 12px 16px; text-align: left; font-weight: 600; color: var(--accent); border-bottom: 2px solid var(--border); }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); }
+tr:hover td { background: rgba(0,212,170,0.03); }
+
+ul, ol { margin: 0 0 16px 24px; }
+li { margin-bottom: 6px; }
+
+.defence-list { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+.defence-list h4 { margin-top: 0; color: var(--accent); }
+.defence-list li { font-size: 14px; }
+.defence-list li::marker { color: var(--accent); }
+
+.refs { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin: 20px 0 8px; font-size: 13px; }
+.refs-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+.refs-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+.refs-label { color: var(--text-dim); font-size: 12px; min-width: 60px; }
+.refs-row a { color: var(--accent); text-decoration: none; padding: 2px 8px; border: 1px solid rgba(0,212,170,0.25); border-radius: 4px; font-size: 12px; transition: all 0.15s; }
+.refs-row a:hover { background: rgba(0,212,170,0.1); }
+.refs-row a.community { color: var(--accent2); border-color: rgba(124,92,252,0.3); }
+.refs-row a.community:hover { background: rgba(124,92,252,0.1); }
+
+.attack-box { background: rgba(255,107,107,0.06); border: 1px solid rgba(255,107,107,0.2); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+.attack-box .attack-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent3); margin-bottom: 8px; font-weight: 600; }
+
+.nav-cards { padding: 0 12px; margin-bottom: 16px; }
+.nav-card { display: block; padding: 8px 12px; margin: 4px 0; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: 500; border: 1px solid transparent; transition: all 0.2s; }
+.nav-card.green { color: var(--accent); border-color: rgba(0,212,170,0.2); background: rgba(0,212,170,0.04); }
+.nav-card.green:hover { background: rgba(0,212,170,0.1); border-left-color: var(--accent); }
+.nav-card.red { color: var(--accent3); border-color: rgba(255,107,107,0.2); background: rgba(255,107,107,0.04); }
+.nav-card.red:hover { background: rgba(255,107,107,0.1); border-left-color: var(--accent3); }
+.nav-card.yellow { color: var(--accent4); border-color: rgba(255,217,61,0.2); background: rgba(255,217,61,0.04); }
+.nav-card.yellow:hover { background: rgba(255,217,61,0.1); border-left-color: var(--accent4); }
+.nav-card.purple { color: var(--accent2); border-color: rgba(124,92,252,0.2); background: rgba(124,92,252,0.04); }
+.nav-card.purple:hover { background: rgba(124,92,252,0.1); border-left-color: var(--accent2); }
+
+@media (max-width: 900px) { nav { display: none; } main { margin-left: 0; padding: 24px 20px; } h1 { font-size: 30px; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <h2>Cloud Security</h2>
+
+  <div class="nav-cards">
+    <a class="nav-card green" href="tls-cryptographic-engineering-guide.html">TLS &amp; Crypto Guide</a>
+    <a class="nav-card red" href="web-app-security.html">Web App Security</a>
+    <a class="nav-card yellow" href="browser-security.html">Browser Security</a>
+    <a class="nav-card yellow" href="crypto-study-notes.html">Study Notes</a>
+    <a class="nav-card purple" href="crypto-mind-map.html">Mind Map</a>
+  </div>
+
+  <div class="section-label">Foundations</div>
+  <a href="#shared-responsibility">Shared Responsibility</a>
+  <a href="#org-structure">Organizational Structure</a>
+
+  <div class="section-label">Identity &amp; Network</div>
+  <a href="#iam">IAM</a>
+  <a href="#networking">Networking</a>
+
+  <div class="section-label">Data Protection</div>
+  <a href="#encryption">Encryption &amp; KMS</a>
+  <a href="#compute">Compute Security</a>
+
+  <div class="section-label">Storage &amp; Operations</div>
+  <a href="#storage">Storage Security</a>
+  <a href="#logging">Logging &amp; Detection</a>
+</nav>
+
+<main>
+
+<h1>Cloud Security</h1>
+<p class="subtitle">Comprehensive AWS &amp; GCP security reference for architects, pentesters, and defenders.</p>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: SHARED RESPONSIBILITY MODEL                       -->
+<!-- ============================================================ -->
+
+<h2 id="shared-responsibility">1. Shared Responsibility Model</h2>
+
+<p>Every cloud engagement begins with a single question: <strong>who is responsible for what?</strong> Both AWS and GCP publish shared responsibility models that draw a line between what the provider secures and what the customer must secure. That line shifts depending on the service model.</p>
+
+<div class="info-box warning">
+  <strong>Cloud does not equal secure by default.</strong> Providers secure the infrastructure <em>of</em> the cloud. You secure everything you put <em>in</em> the cloud. Misconfigured S3 buckets, overly permissive IAM policies, and unencrypted databases are customer-side failures, not provider failures. The vast majority of cloud breaches stem from customer misconfiguration.
+</div>
+
+<h3>Responsibility by Service Model</h3>
+
+<table>
+  <tr>
+    <th>Layer</th>
+    <th>IaaS (EC2 / GCE)</th>
+    <th>PaaS (RDS, App Engine)</th>
+    <th>Managed Services (S3, BigQuery)</th>
+  </tr>
+  <tr>
+    <td><strong>Physical / Host</strong></td>
+    <td>Provider</td>
+    <td>Provider</td>
+    <td>Provider</td>
+  </tr>
+  <tr>
+    <td><strong>Hypervisor</strong></td>
+    <td>Provider</td>
+    <td>Provider</td>
+    <td>Provider</td>
+  </tr>
+  <tr>
+    <td><strong>OS Patching</strong></td>
+    <td>Customer</td>
+    <td>Provider</td>
+    <td>Provider</td>
+  </tr>
+  <tr>
+    <td><strong>Runtime / Middleware</strong></td>
+    <td>Customer</td>
+    <td>Shared</td>
+    <td>Provider</td>
+  </tr>
+  <tr>
+    <td><strong>Application Code</strong></td>
+    <td>Customer</td>
+    <td>Customer</td>
+    <td>Provider</td>
+  </tr>
+  <tr>
+    <td><strong>Data Classification</strong></td>
+    <td>Customer</td>
+    <td>Customer</td>
+    <td>Customer</td>
+  </tr>
+  <tr>
+    <td><strong>IAM / Access Control</strong></td>
+    <td>Customer</td>
+    <td>Customer</td>
+    <td>Customer</td>
+  </tr>
+  <tr>
+    <td><strong>Network Config</strong></td>
+    <td>Customer</td>
+    <td>Shared</td>
+    <td>Provider</td>
+  </tr>
+  <tr>
+    <td><strong>Encryption (at rest)</strong></td>
+    <td>Customer</td>
+    <td>Shared (default keys)</td>
+    <td>Shared (default keys)</td>
+  </tr>
+</table>
+
+<h3>AWS vs GCP Terminology</h3>
+
+<table>
+  <tr>
+    <th>Concept</th>
+    <th>AWS</th>
+    <th>GCP</th>
+  </tr>
+  <tr>
+    <td>Shared responsibility doc</td>
+    <td>Shared Responsibility Model</td>
+    <td>Shared Fate Model</td>
+  </tr>
+  <tr>
+    <td>Compliance framework</td>
+    <td>AWS Artifact</td>
+    <td>Google Cloud Compliance Reports</td>
+  </tr>
+  <tr>
+    <td>Security posture mgmt</td>
+    <td>Security Hub</td>
+    <td>Security Command Center (SCC)</td>
+  </tr>
+  <tr>
+    <td>Trusted advisor</td>
+    <td>AWS Trusted Advisor</td>
+    <td>Active Assist / Recommender</td>
+  </tr>
+</table>
+
+<div class="info-box note">
+  <strong>GCP's "Shared Fate" nuance:</strong> Google explicitly states they aim for shared fate rather than simply shared responsibility. This means GCP attempts to provide secure-by-default configurations (e.g., uniform bucket-level access, VPC Service Controls) so that misconfiguration is harder. The responsibility boundary is similar in practice, but the defaults are often stricter.
+</div>
+
+<h3>IaaS Responsibility Boundary</h3>
+
+<pre>
+  +-----------------------------------------------------------------+
+  |                     CUSTOMER RESPONSIBILITY                      |
+  |  +-----------------------------------------------------------+  |
+  |  |  Data Classification &amp; Encryption  |  IAM &amp; Access Ctrl  |  |
+  |  +-----------------------------------------------------------+  |
+  |  |  Application Code  |  Middleware  |  Guest OS Patching     |  |
+  |  +-----------------------------------------------------------+  |
+  |  |  Network Config (SG, NACL, FW)  |  Monitoring / Logging   |  |
+  |  +-----------------------------------------------------------+  |
+  +========================= BOUNDARY ==============================+
+  |                     PROVIDER RESPONSIBILITY                      |
+  |  +-----------------------------------------------------------+  |
+  |  |  Hypervisor / Nitro / Titan  |  Physical Host Security    |  |
+  |  +-----------------------------------------------------------+  |
+  |  |  Network Fabric  |  Storage HW  |  Data Center Physical   |  |
+  |  +-----------------------------------------------------------+  |
+  |  |  Power  |  Cooling  |  Environmental Controls              |  |
+  |  +-----------------------------------------------------------+  |
+  +-----------------------------------------------------------------+
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">AWS</span>
+    <a href="https://aws.amazon.com/compliance/shared-responsibility-model/">Shared Responsibility Model</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">GCP</span>
+    <a href="https://cloud.google.com/architecture/framework/security/shared-responsibility-shared-fate">Shared Fate</a>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 2: ORGANIZATIONAL STRUCTURE                          -->
+<!-- ============================================================ -->
+
+<h2 id="org-structure">2. Organizational Structure</h2>
+
+<p>A well-designed organizational hierarchy is the foundation of cloud security at scale. Both AWS and GCP provide resource hierarchy mechanisms that enable centralized governance, billing isolation, and blast-radius containment. Getting this right from the start prevents years of technical debt.</p>
+
+<h3>AWS: Organizations, OUs, and Accounts</h3>
+
+<p>AWS Organizations provides a tree structure: a single <strong>Management Account</strong> (formerly "Master") at the root, with <strong>Organizational Units (OUs)</strong> that contain <strong>member accounts</strong>. Each account is a hard security and billing boundary.</p>
+
+<h4>Key Components</h4>
+<ul>
+  <li><strong>Management Account:</strong> The root of the organization. Hosts the billing console and SCPs. Should contain no workloads — only governance tooling.</li>
+  <li><strong>Organizational Units (OUs):</strong> Logical groupings. Nest up to 5 levels deep. SCPs applied to an OU inherit downward to all child OUs and accounts.</li>
+  <li><strong>Service Control Policies (SCPs):</strong> JSON policies that set the maximum permissions boundary for every principal in an account. They do not grant permissions — they restrict them. SCPs do not affect the management account.</li>
+  <li><strong>AWS Control Tower:</strong> An opinionated landing zone service that provisions Organizations, OUs, accounts, guardrails, and SSO automatically. Uses Account Factory for Terraform (AFT) or the built-in Account Factory to vend new accounts.</li>
+  <li><strong>Account Factory:</strong> A self-service mechanism (via Service Catalog or AFT) for creating pre-configured accounts that conform to organizational baselines. Teams request accounts; pipelines provision them with standard VPCs, IAM roles, logging, and guardrails.</li>
+</ul>
+
+<h4>Recommended AWS Organization Hierarchy</h4>
+
+<pre>
+  Management Account (root)
+  |
+  +-- Security OU
+  |   +-- Log Archive Account        (centralized CloudTrail, Config, VPC Flow Logs)
+  |   +-- Security Tooling Account   (GuardDuty delegated admin, Security Hub, Detective)
+  |   +-- Audit Account              (cross-account read-only audit role)
+  |
+  +-- Infrastructure OU
+  |   +-- Shared Services Account    (DNS, Directory, CI/CD, artifact repos)
+  |   +-- Network Account            (Transit Gateway, VPN, Direct Connect, centralized egress)
+  |
+  +-- Sandbox OU                     (developer experimentation, aggressive SCP restrictions)
+  |   +-- Dev Sandbox Account 1
+  |   +-- Dev Sandbox Account 2
+  |
+  +-- Workloads OU
+  |   +-- Production OU
+  |   |   +-- App-A Prod Account
+  |   |   +-- App-B Prod Account
+  |   +-- Staging OU
+  |   |   +-- App-A Staging Account
+  |   |   +-- App-B Staging Account
+  |   +-- Development OU
+  |       +-- App-A Dev Account
+  |       +-- App-B Dev Account
+  |
+  +-- Suspended OU                   (quarantine: SCP denies all actions)
+</pre>
+
+<h3>GCP: Organization, Folders, and Projects</h3>
+
+<p>GCP uses a similar tree: an <strong>Organization</strong> node (tied to a Cloud Identity or Google Workspace domain), containing <strong>Folders</strong> (nestable up to 10 levels), which contain <strong>Projects</strong>. Projects are the fundamental resource boundary in GCP — all resources (VMs, buckets, datasets) live inside a project.</p>
+
+<h4>Key Components</h4>
+<ul>
+  <li><strong>Organization Node:</strong> The root, automatically created when a domain is verified. Organization-level IAM and Org Policies propagate downward.</li>
+  <li><strong>Folders:</strong> Grouping mechanism for projects. Map to teams, environments, or business units. IAM bindings and Org Policies on a folder inherit downward.</li>
+  <li><strong>Projects:</strong> The billing and resource boundary. Each project has a unique ID and number. Quotas, APIs, and IAM are project-scoped.</li>
+  <li><strong>Organization Policies:</strong> Constraints applied at the org, folder, or project level. Use boolean or list constraints to restrict allowed values. Examples: restrict VM external IPs, enforce uniform bucket-level access, restrict resource locations.</li>
+  <li><strong>Assured Workloads:</strong> Creates compliance-enforced folders that automatically apply Org Policies, data residency, and personnel controls for regulatory frameworks (FedRAMP, IL4, HIPAA).</li>
+</ul>
+
+<h4>Recommended GCP Organization Hierarchy</h4>
+
+<pre>
+  Organization (example.com)
+  |
+  +-- Common Folder
+  |   +-- Logging Project             (org-level audit log sinks, centralized SIEM export)
+  |   +-- Security Project            (SCC, Chronicle, DLP results, Binary Auth policies)
+  |   +-- Shared Services Project     (Artifact Registry, Secret Manager, shared VPCs)
+  |   +-- Network Host Project        (Shared VPC host, Cloud Interconnect, DNS)
+  |
+  +-- Sandbox Folder                  (Org Policy: no external IPs, no public GCS)
+  |   +-- Developer Sandbox 1
+  |   +-- Developer Sandbox 2
+  |
+  +-- Production Folder
+  |   +-- App-A Prod Project
+  |   +-- App-B Prod Project
+  |   +-- Data Analytics Prod Project
+  |
+  +-- Staging Folder
+  |   +-- App-A Staging Project
+  |   +-- App-B Staging Project
+  |
+  +-- Development Folder
+  |   +-- App-A Dev Project
+  |   +-- App-B Dev Project
+  |
+  +-- Archived Folder                 (Org Policy: deny all compute, deny all networking)
+</pre>
+
+<h3>Guardrails: Preventive vs Detective</h3>
+
+<table>
+  <tr>
+    <th>Type</th>
+    <th>AWS Mechanism</th>
+    <th>GCP Mechanism</th>
+    <th>Purpose</th>
+  </tr>
+  <tr>
+    <td><strong>Preventive</strong></td>
+    <td>SCPs</td>
+    <td>Organization Policies</td>
+    <td>Block forbidden actions before they happen</td>
+  </tr>
+  <tr>
+    <td><strong>Preventive</strong></td>
+    <td>Permission Boundaries</td>
+    <td>IAM Deny Policies</td>
+    <td>Cap maximum permissions for principals</td>
+  </tr>
+  <tr>
+    <td><strong>Detective</strong></td>
+    <td>AWS Config Rules</td>
+    <td>SCC / Security Health Analytics</td>
+    <td>Detect non-compliant resource configurations</td>
+  </tr>
+  <tr>
+    <td><strong>Detective</strong></td>
+    <td>GuardDuty</td>
+    <td>Event Threat Detection</td>
+    <td>Detect active threats and anomalies</td>
+  </tr>
+  <tr>
+    <td><strong>Responsive</strong></td>
+    <td>Config Remediation + Lambda</td>
+    <td>Cloud Functions + SCC Notifications</td>
+    <td>Auto-remediate drift and violations</td>
+  </tr>
+</table>
+
+<h3>Billing Isolation and Blast Radius</h3>
+
+<p>In AWS, each account is a <strong>hard blast-radius boundary</strong>. An IAM compromise in one account cannot directly reach resources in another (unless explicit cross-account trust exists). Billing is consolidated at the org level but traceable per account. In GCP, projects serve a similar function, but IAM inheritance from folders means a folder-level binding grants access to all child projects. This makes folder-level IAM bindings powerful but dangerous.</p>
+
+<div class="info-box key">
+  <strong>Account/Project Vending with IaC:</strong> Use Terraform (or Pulumi/CDK) to automate account/project creation. AWS Account Factory for Terraform (AFT) and the GCP Project Factory Terraform module both provide standardized pipelines. Every new account/project should be born with: a baseline VPC (or Shared VPC attachment), centralized logging, guardrail policies, and a break-glass role.
+</div>
+
+<h3>Code: Preventive Guardrails</h3>
+
+<h4>AWS SCP — Prevent CloudTrail Disable</h4>
+<pre>
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "PreventCloudTrailDisable",
+      "Effect": "Deny",
+      "Action": [
+        "cloudtrail:StopLogging",
+        "cloudtrail:DeleteTrail",
+        "cloudtrail:UpdateTrail"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/OrganizationAccountAccessRole"
+          ]
+        }
+      }
+    }
+  ]
+}
+</pre>
+
+<h4>GCP Org Policy — Restrict Resource Locations</h4>
+<pre>
+# Apply org policy to restrict resources to US and EU regions only
+gcloud resource-manager org-policies set-policy \
+  --organization=123456789012 \
+  policy.yaml
+
+# policy.yaml:
+# constraint: constraints/gcp.resourceLocations
+# listPolicy:
+#   allowedValues:
+#     - in:us-locations
+#     - in:eu-locations
+#   deniedValues:
+#     - in:asia-locations
+
+# Note: use set-policy with a YAML file as shown above.
+# There is no "org-policies allow" gcloud command.
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">AWS</span>
+    <a href="https://docs.aws.amazon.com/organizations/latest/userguide/orgs_manage_policies_scps.html">SCPs</a>
+    <a href="https://docs.aws.amazon.com/controltower/latest/userguide/what-is-control-tower.html">Control Tower</a>
+    <a href="https://docs.aws.amazon.com/controltower/latest/userguide/aft-overview.html">AFT</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">GCP</span>
+    <a href="https://cloud.google.com/resource-manager/docs/organization-policy/overview">Org Policies</a>
+    <a href="https://cloud.google.com/assured-workloads/docs/overview">Assured Workloads</a>
+    <a href="https://github.com/terraform-google-modules/terraform-google-project-factory" class="community">Project Factory TF</a>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 3: IAM                                               -->
+<!-- ============================================================ -->
+
+<h2 id="iam">3. Identity and Access Management</h2>
+
+<p>IAM is the single most critical control plane in any cloud environment. Misconfigured IAM is the root cause of the majority of cloud breaches. Both AWS and GCP use policy-based access control, but their models differ in important ways.</p>
+
+<h3>AWS IAM Model</h3>
+
+<h4>Core Concepts</h4>
+<ul>
+  <li><strong>Users:</strong> Long-lived identities with access keys or console passwords. Avoid where possible; prefer roles.</li>
+  <li><strong>Groups:</strong> Collections of users. Policies attached to groups apply to all members.</li>
+  <li><strong>Roles:</strong> Temporary credential identities. EC2 instance profiles, Lambda execution roles, and cross-account access all use roles. Principals assume roles via <code>sts:AssumeRole</code>.</li>
+  <li><strong>Policies:</strong> JSON documents with Effect/Action/Resource/Condition. Types: identity-based (attached to user/group/role), resource-based (attached to S3/KMS/etc), permission boundaries, SCPs, session policies.</li>
+  <li><strong>Permission Boundaries:</strong> An advanced feature that sets the maximum permissions an IAM entity can have, regardless of identity-based policies. Used for delegation: allow teams to create roles but cap their power.</li>
+  <li><strong>OIDC Federation:</strong> GitHub Actions, GitLab CI, and other IdPs can assume AWS roles via OIDC without storing long-lived credentials. The trust policy validates the JWT issuer, audience, and subject claims.</li>
+</ul>
+
+<h4>AWS Policy Evaluation Logic</h4>
+<ol>
+  <li>If any explicit <strong>Deny</strong> exists (in any policy type) &rarr; <strong>DENY</strong>.</li>
+  <li>If the SCP does not allow the action &rarr; <strong>DENY</strong> (implicit).</li>
+  <li>If a resource-based policy grants access to the caller directly &rarr; <strong>ALLOW</strong> (for same-account; cross-account requires both sides).</li>
+  <li>If the permission boundary does not allow it &rarr; <strong>DENY</strong>.</li>
+  <li>If the session policy does not allow it &rarr; <strong>DENY</strong>.</li>
+  <li>If an identity-based policy allows it &rarr; <strong>ALLOW</strong>.</li>
+  <li>Otherwise &rarr; <strong>DENY</strong> (implicit default).</li>
+</ol>
+
+<h3>GCP IAM Model</h3>
+
+<h4>Core Concepts</h4>
+<ul>
+  <li><strong>Members (Principals):</strong> Google accounts, service accounts, Google groups, Cloud Identity domains, or <code>allUsers</code> / <code>allAuthenticatedUsers</code>.</li>
+  <li><strong>Roles:</strong> Collections of permissions. Three types:
+    <ul>
+      <li><strong>Basic roles:</strong> Owner, Editor, Viewer. Extremely broad — avoid in production.</li>
+      <li><strong>Predefined roles:</strong> Fine-grained, maintained by Google (e.g., <code>roles/storage.objectViewer</code>).</li>
+      <li><strong>Custom roles:</strong> User-defined permission sets. Useful when predefined roles are too broad.</li>
+    </ul>
+  </li>
+  <li><strong>IAM Bindings:</strong> A binding ties a member to a role on a resource. Bindings exist at the resource level (project, folder, org, bucket, etc.) and inherit downward through the hierarchy.</li>
+  <li><strong>Service Accounts:</strong> Machine identities. Attached to GCE instances, Cloud Functions, GKE pods. Each has a unique email. The <code>iam.serviceAccounts.actAs</code> permission authorizes attaching a service account to a resource (e.g., deploying a VM or Cloud Function with that SA), which indirectly grants that SA's privileges. True impersonation uses <code>generateAccessToken</code> via the Service Account Credentials API.</li>
+  <li><strong>Workload Identity Federation:</strong> Allows external identities (AWS, Azure AD, OIDC, SAML) to impersonate GCP service accounts without exporting keys. The gold standard for CI/CD pipelines.</li>
+  <li><strong>IAM Deny Policies:</strong> Explicit deny rules that override allow bindings. Similar in effect to AWS SCPs. Applied at org, folder, or project level.</li>
+</ul>
+
+<h4>GCP IAM Policy Evaluation Logic</h4>
+<ol>
+  <li>If any IAM <strong>Deny Policy</strong> matches &rarr; <strong>DENY</strong>.</li>
+  <li>If the member has a role binding at any level in the hierarchy that grants the permission &rarr; <strong>ALLOW</strong>.</li>
+  <li>Otherwise &rarr; <strong>DENY</strong> (implicit).</li>
+</ol>
+
+<div class="info-box note">
+  <strong>Organization Policies are a separate system.</strong> Organization Policies operate on a separate plane from IAM — they constrain resource configurations (e.g., "no external IPs", "only allow resources in us-east1") rather than controlling who can perform actions.
+</div>
+
+<div class="info-box note">
+  <strong>Key difference:</strong> AWS evaluates identity policies and resource policies as separate policy types with specific interaction rules. GCP uses a single additive model where bindings at any level in the hierarchy grant access, and you cannot revoke an inherited binding at a lower level — you must use IAM Deny Policies.
+</div>
+
+<h3>Least Privilege Tooling</h3>
+
+<table>
+  <tr>
+    <th>Tool</th>
+    <th>AWS</th>
+    <th>GCP</th>
+  </tr>
+  <tr>
+    <td>Unused permission detection</td>
+    <td>IAM Access Analyzer (unused access)</td>
+    <td>IAM Recommender</td>
+  </tr>
+  <tr>
+    <td>Policy generation</td>
+    <td>Access Analyzer policy generation (from CloudTrail)</td>
+    <td>IAM Recommender (role suggestions)</td>
+  </tr>
+  <tr>
+    <td>External access detection</td>
+    <td>Access Analyzer (external access)</td>
+    <td>IAM Analyzer (in SCC Premium)</td>
+  </tr>
+  <tr>
+    <td>Credential report</td>
+    <td>IAM Credential Report</td>
+    <td>Policy Intelligence</td>
+  </tr>
+</table>
+
+<div class="attack-box">
+  <div class="attack-label">Attack Vectors</div>
+  <ul>
+    <li><strong>AWS — iam:PassRole + lambda:CreateFunction:</strong> A user who can pass any role to Lambda and create functions can execute code as any role in the account. This is the most common AWS privesc path.</li>
+    <li><strong>AWS — iam:CreatePolicyVersion:</strong> A user who can create a new version of any managed policy and set it as default can grant themselves <code>*:*</code>.</li>
+    <li><strong>AWS — Confused Deputy:</strong> If a role trust policy uses only <code>aws:SourceAccount</code> without <code>aws:SourceArn</code>, any service or resource in that account can assume the role.</li>
+    <li><strong>GCP — iam.serviceAccounts.actAs:</strong> A user with <code>actAs</code> permission on a service account and the ability to create compute resources can effectively become that service account.</li>
+    <li><strong>GCP — setIamPolicy:</strong> A user with <code>setIamPolicy</code> on a project can grant themselves Owner. This is equivalent to full admin access.</li>
+    <li><strong>GCP — Leaked SA Keys:</strong> Exported service account JSON keys found in code repos, CI logs, or config files provide persistent access with no expiry until rotated.</li>
+  </ul>
+</div>
+
+<div class="defence-list">
+  <h4>Defences</h4>
+  <ul>
+    <li>Apply SCPs to deny <code>iam:CreateUser</code>, <code>iam:CreateAccessKey</code> in all accounts except the identity account.</li>
+    <li>Use permission boundaries on all developer-created roles to cap privileges.</li>
+    <li>Require <code>aws:SourceArn</code> in all cross-service role trust policies (confused deputy prevention).</li>
+    <li>Use condition keys: <code>iam:PassedToService</code>, <code>iam:PermissionsBoundary</code>, <code>aws:RequestedRegion</code>.</li>
+    <li>In GCP, use IAM Deny Policies to block <code>setIamPolicy</code> at the org level except for break-glass principals.</li>
+    <li>Never export GCP service account keys. Use Workload Identity Federation for external access.</li>
+    <li>Enforce short-lived credentials everywhere: AssumeRole sessions (max 1hr for sensitive roles), GCP access tokens (1hr default).</li>
+    <li>Run IAM Access Analyzer / IAM Recommender monthly to prune unused permissions.</li>
+  </ul>
+</div>
+
+<h3>Code Examples</h3>
+
+<h4>AWS — Least-Privilege S3 Read Policy</h4>
+<pre>
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowS3ReadSpecificBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::my-app-data-bucket",
+        "arn:aws:s3:::my-app-data-bucket/*"
+      ]
+    }
+  ]
+}
+</pre>
+
+<h4>GCP — IAM Binding via gcloud</h4>
+<pre>
+# Grant a specific service account read-only access to a bucket
+gcloud storage buckets add-iam-policy-binding gs://my-app-data-bucket \
+  --member="serviceAccount:my-reader@my-project.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+
+# Grant a user a predefined role on a specific project
+gcloud projects add-iam-policy-binding my-project-id \
+  --member="user:alice@example.com" \
+  --role="roles/viewer" \
+  --condition='expression=request.time < timestamp("2026-07-01T00:00:00Z"),title=TemporaryAccess'
+</pre>
+
+<h4>AWS — AssumeRole with External ID (Confused Deputy Prevention)</h4>
+<pre>
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::222222222222:root"
+      },
+      "Action": "sts:AssumeRole",
+      "Condition": {
+        "StringEquals": {
+          "sts:ExternalId": "unique-external-id-from-partner-abc123"
+        }
+      }
+    }
+  ]
+}
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">AWS</span>
+    <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_evaluation-logic.html">Policy Eval Logic</a>
+    <a href="https://docs.aws.amazon.com/IAM/latest/UserGuide/access_policies_boundaries.html">Permission Boundaries</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">GCP</span>
+    <a href="https://cloud.google.com/iam/docs/deny-overview">IAM Deny Policies</a>
+    <a href="https://cloud.google.com/iam/docs/workload-identity-federation">Workload Identity Federation</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">Tools</span>
+    <a href="https://github.com/RhinoSecurityLabs/pacu" class="community">Pacu (AWS Pentest)</a>
+    <a href="https://github.com/nccgroup/ScoutSuite" class="community">ScoutSuite</a>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 4: NETWORKING                                        -->
+<!-- ============================================================ -->
+
+<h2 id="networking">4. Networking</h2>
+
+<p>Cloud networking is software-defined and API-driven. This gives defenders granular control but also exposes a larger attack surface than traditional networking — a single API call can open a port to the internet.</p>
+
+<h3>Core Concepts</h3>
+
+<table>
+  <tr>
+    <th>Concept</th>
+    <th>AWS</th>
+    <th>GCP</th>
+  </tr>
+  <tr>
+    <td>Virtual Network</td>
+    <td>VPC (regional)</td>
+    <td>VPC (global, subnets are regional)</td>
+  </tr>
+  <tr>
+    <td>Subnets</td>
+    <td>Availability Zone scoped</td>
+    <td>Region scoped</td>
+  </tr>
+  <tr>
+    <td>Route Tables</td>
+    <td>Per-subnet route tables</td>
+    <td>VPC-level routes + network tags</td>
+  </tr>
+  <tr>
+    <td>NAT</td>
+    <td>NAT Gateway (per-AZ)</td>
+    <td>Cloud NAT (per-region)</td>
+  </tr>
+  <tr>
+    <td>Stateful Firewall</td>
+    <td>Security Groups (instance-level)</td>
+    <td>VPC Firewall Rules (network-level)</td>
+  </tr>
+  <tr>
+    <td>Stateless Firewall</td>
+    <td>Network ACLs (subnet-level)</td>
+    <td>No direct equivalent (all GCP firewalls are stateful). Hierarchical Firewall Policies provide org/folder-level rules but are stateful.</td>
+  </tr>
+  <tr>
+    <td>Private API Access</td>
+    <td>VPC Endpoints (Gateway + Interface)</td>
+    <td>Private Google Access + Private Service Connect</td>
+  </tr>
+  <tr>
+    <td>Service Perimeter</td>
+    <td>N/A (use VPC Endpoints + policies)</td>
+    <td>VPC Service Controls</td>
+  </tr>
+  <tr>
+    <td>Private Connectivity</td>
+    <td>AWS PrivateLink</td>
+    <td>Private Service Connect</td>
+  </tr>
+  <tr>
+    <td>Cross-VPC</td>
+    <td>VPC Peering, Transit Gateway</td>
+    <td>VPC Peering, Shared VPC</td>
+  </tr>
+</table>
+
+<h3>AWS: Security Groups vs NACLs</h3>
+
+<p><strong>Security Groups</strong> are stateful, instance-level firewalls. They allow rules only (no explicit deny). If you allow inbound TCP/443, the response is automatically allowed. Security groups can reference other security groups by ID, enabling service-to-service rules without IP management.</p>
+
+<p><strong>Network ACLs</strong> are stateless, subnet-level firewalls. They support both allow and deny rules, evaluated in order by rule number. Both inbound and outbound rules must be explicitly configured. Use NACLs as a coarse defense layer; use Security Groups for fine-grained control.</p>
+
+<h3>GCP: Firewall Rules and VPC Service Controls</h3>
+
+<p><strong>VPC Firewall Rules</strong> are stateful and network-level. They can target instances by network tags or service accounts. Priority-based evaluation (lower number = higher priority). Support both allow and deny rules.</p>
+
+<p><strong>Hierarchical Firewall Policies</strong> can be applied at the org or folder level and enforce rules across all child VPCs. This is GCP's equivalent of a centralized firewall — ideal for org-wide blocks.</p>
+
+<p><strong>VPC Service Controls</strong> create a security perimeter around GCP API resources. Even if an IAM policy allows access, VPC-SC can block API calls from outside the perimeter. This prevents data exfiltration by limiting which networks, identities, and projects can access sensitive APIs like BigQuery, GCS, and Pub/Sub.</p>
+
+<h3>Secure VPC Architecture</h3>
+
+<pre>
+                            INTERNET
+                               |
+                         +-----+-----+
+                         |  WAF/CDN  |
+                         | CloudFront|
+                         | / Cloud   |
+                         | Armor     |
+                         +-----+-----+
+                               |
+              +----------------+----------------+
+              |         PUBLIC SUBNETS           |
+              |  +----------+  +----------+     |
+              |  |   ALB    |  |   ALB    |     |
+              |  | (AZ-a)   |  | (AZ-b)   |     |
+              |  +----+-----+  +----+-----+     |
+              +-------|-----------|--------------+
+                      |           |
+              +-------+-----------+--------------+
+              |        PRIVATE SUBNETS (App)      |
+              |  +----------+  +----------+      |
+              |  | App Tier |  | App Tier |      |
+              |  | (AZ-a)   |  | (AZ-b)   |      |
+              |  +----+-----+  +----+-----+      |
+              +-------|-----------|--------------+
+                      |           |
+              +-------+-----------+--------------+
+              |        PRIVATE SUBNETS (Data)     |
+              |  +----------+  +----------+      |
+              |  |   RDS    |  |   RDS    |      |
+              |  | Primary  |  | Standby  |      |
+              |  +----------+  +----------+      |
+              +----------------------------------+
+              |                                   |
+              |  NAT GW ----> Internet (egress)   |
+              |  VPC Endpoints -> S3, KMS, STS    |
+              +-----------------------------------+
+</pre>
+
+<div class="attack-box">
+  <div class="attack-label">Attack Vectors</div>
+  <ul>
+    <li><strong>SSRF to IMDS:</strong> An SSRF vulnerability on an EC2 instance can be used to query <code>http://169.254.169.254/latest/meta-data/iam/security-credentials/</code> and steal the instance role's temporary credentials. The Capital One breach (2019) exploited exactly this path.</li>
+    <li><strong>GCP Metadata Server:</strong> Similarly, <code>http://metadata.google.internal/computeMetadata/v1/</code> exposes access tokens, project info, and service account credentials. The <code>Metadata-Flavor: Google</code> header requirement provides minimal protection.</li>
+    <li><strong>Permissive 0.0.0.0/0 Rules:</strong> Security groups or firewall rules allowing all inbound traffic from <code>0.0.0.0/0</code> on management ports (22, 3389) are a leading cause of compromise.</li>
+    <li><strong>Unintended Public Exposure:</strong> Public subnets with auto-assign public IP, or GCP instances with external IPs, combined with permissive firewall rules.</li>
+    <li><strong>DNS Rebinding:</strong> Bypassing metadata endpoint protections by resolving a DNS name to 169.254.169.254.</li>
+  </ul>
+</div>
+
+<div class="defence-list">
+  <h4>Defences</h4>
+  <ul>
+    <li><strong>Enforce IMDSv2 on all EC2 instances:</strong> Requires a PUT request with a hop-limited token, blocking SSRF via Layer 7 proxies. Set <code>HttpTokens: required</code> and <code>HttpPutResponseHopLimit: 1</code>.</li>
+    <li><strong>GCP Metadata Concealment:</strong> On GKE, enable metadata concealment to prevent pods from accessing the node's metadata server. Use Workload Identity instead.</li>
+    <li><strong>VPC Service Controls:</strong> Create perimeters around data services. Even with valid credentials, access from outside the perimeter is denied.</li>
+    <li><strong>Network Segmentation:</strong> Separate public, application, and data tiers into distinct subnets. Use NACLs/hierarchical firewalls as a secondary layer.</li>
+    <li><strong>VPC Endpoints / Private Google Access:</strong> Route API traffic internally rather than through the public internet.</li>
+    <li><strong>Use SCP / Org Policy</strong> to prevent creation of public-facing resources (e.g., deny <code>ec2:RunInstances</code> without IMDSv2, deny external IPs in GCP).</li>
+  </ul>
+</div>
+
+<h3>Code Examples</h3>
+
+<h4>AWS — Security Group (Terraform)</h4>
+<pre>
+resource "aws_security_group" "app" {
+  name_prefix = "app-tier-"
+  vpc_id      = aws_vpc.main.id
+  description = "App tier - allow HTTPS from ALB only"
+
+  ingress {
+    description     = "HTTPS from ALB"
+    from_port       = 443
+    to_port         = 443
+    protocol        = "tcp"
+    security_groups = [aws_security_group.alb.id]
+  }
+
+  egress {
+    description = "Allow all outbound"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "app-tier-sg" }
+}
+</pre>
+
+<h4>GCP — Firewall Rule (gcloud)</h4>
+<pre>
+# Allow HTTPS from load balancer health check ranges only
+gcloud compute firewall-rules create allow-lb-health-checks \
+  --network=production-vpc \
+  --direction=INGRESS \
+  --action=ALLOW \
+  --rules=tcp:443 \
+  --source-ranges="35.191.0.0/16,130.211.0.0/22" \
+  --target-tags=app-server \
+  --priority=1000 \
+  --description="Allow GCP LB health checks to app servers"
+
+# Deny all other ingress (low priority catch-all)
+gcloud compute firewall-rules create deny-all-ingress \
+  --network=production-vpc \
+  --direction=INGRESS \
+  --action=DENY \
+  --rules=all \
+  --source-ranges="0.0.0.0/0" \
+  --priority=65534 \
+  --description="Default deny all ingress"
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">AWS</span>
+    <a href="https://docs.aws.amazon.com/vpc/latest/userguide/vpc-security-groups.html">Security Groups</a>
+    <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html">IMDSv2</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">GCP</span>
+    <a href="https://cloud.google.com/vpc-service-controls/docs/overview">VPC Service Controls</a>
+    <a href="https://cloud.google.com/vpc/docs/firewalls">Firewall Rules</a>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 5: ENCRYPTION & KMS                                  -->
+<!-- ============================================================ -->
+
+<h2 id="encryption">5. Encryption &amp; KMS</h2>
+
+<p>Cloud encryption relies on envelope encryption: data is encrypted with a Data Encryption Key (DEK), and the DEK is encrypted with a Key Encryption Key (KEK) managed by a KMS. This approach allows large-scale encryption without sending bulk data to the KMS.</p>
+
+<h3>Envelope Encryption Model</h3>
+
+<pre>
+  +-------------------+      +--------------------+
+  |   Plaintext Data  |      |      KMS (HSM)     |
+  +--------+----------+      +--------+-----------+
+           |                           |
+           v                           v
+  +--------+----------+      +--------+-----------+
+  | Encrypt with DEK  |      | Generate DEK       |
+  | (AES-256-GCM)     |      | (plaintext + enc)  |
+  +--------+----------+      +--------+-----------+
+           |                           |
+           v                           v
+  +--------+----------+      +--------+-----------+
+  | Ciphertext Data   |      | Encrypted DEK      |
+  +--------+----------+      | (wrapped by KEK)   |
+           |                  +--------+-----------+
+           v                           |
+  +--------+-----+----+---------------+
+  | Store Together:                    |
+  | [ Encrypted DEK | Ciphertext ]    |
+  +------------------------------------+
+
+  Decryption:
+  1. Send encrypted DEK to KMS
+  2. KMS decrypts DEK using KEK (key never leaves HSM)
+  3. Use plaintext DEK to decrypt data locally
+  4. Discard plaintext DEK from memory
+</pre>
+
+<h3>AWS KMS vs GCP Cloud KMS</h3>
+
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>AWS KMS</th>
+    <th>GCP Cloud KMS</th>
+  </tr>
+  <tr>
+    <td>Key Types</td>
+    <td>Symmetric (AES-256), Asymmetric (RSA, ECC), HMAC</td>
+    <td>Symmetric (AES-256), Asymmetric (RSA, EC), MAC</td>
+  </tr>
+  <tr>
+    <td>Key Hierarchy</td>
+    <td>AWS-managed, Customer-managed (CMK), Custom Key Store (CloudHSM)</td>
+    <td>Google-managed, CMEK, CSEK, Cloud HSM, Cloud EKM</td>
+  </tr>
+  <tr>
+    <td>Access Control</td>
+    <td>Key Policy (resource-based) + IAM policies + Grants</td>
+    <td>IAM bindings on key rings and keys</td>
+  </tr>
+  <tr>
+    <td>Automatic Rotation</td>
+    <td>Annual (configurable 90-2560 days)</td>
+    <td>Configurable (any period)</td>
+  </tr>
+  <tr>
+    <td>Multi-Region</td>
+    <td>Multi-Region Keys (replicated)</td>
+    <td>Not built-in (use separate keys per region)</td>
+  </tr>
+  <tr>
+    <td>External Key Store</td>
+    <td>External Key Store (XKS)</td>
+    <td>Cloud External Key Manager (EKM)</td>
+  </tr>
+  <tr>
+    <td>Audit</td>
+    <td>CloudTrail logs every API call</td>
+    <td>Cloud Audit Logs for all key operations</td>
+  </tr>
+</table>
+
+<h3>Encryption at Rest Options</h3>
+
+<table>
+  <tr>
+    <th>Option</th>
+    <th>Description</th>
+    <th>Who Holds Key</th>
+  </tr>
+  <tr>
+    <td><strong>Default Encryption</strong></td>
+    <td>Provider encrypts at rest with provider-managed keys. No configuration needed. S3, GCS, EBS, Persistent Disks all do this by default.</td>
+    <td>Provider (fully managed)</td>
+  </tr>
+  <tr>
+    <td><strong>CMEK</strong></td>
+    <td>Customer-Managed Encryption Key. You create and manage the key in KMS; the service uses it for encryption. You control rotation, access policy, and can revoke access by disabling the key.</td>
+    <td>Customer (in cloud KMS)</td>
+  </tr>
+  <tr>
+    <td><strong>CSEK</strong></td>
+    <td>Customer-Supplied Encryption Key. You provide the raw key material for each API call. The cloud never persistently stores the key. Supported by GCS and GCE disks; AWS equivalent is SSE-C for S3.</td>
+    <td>Customer (on-premises)</td>
+  </tr>
+</table>
+
+<div class="info-box note">
+  <strong>When to use CMEK:</strong> Whenever you need to enforce separation of duties (the DBA cannot decrypt without the security team enabling the key), meet compliance requirements for key control, or enable crypto-shredding (destroy the key to render all data irrecoverable).
+</div>
+
+<div class="attack-box">
+  <div class="attack-label">Attack Vectors</div>
+  <ul>
+    <li><strong>Permissive Key Policies:</strong> An AWS KMS key policy with <code>"Principal": "*"</code> and no condition keys allows any AWS principal to use the key. Combined with a public S3 bucket, this means anyone can decrypt the data.</li>
+    <li><strong>Unencrypted Snapshots:</strong> EBS snapshots and GCE disk snapshots can be shared cross-account or made public. If they are not encrypted with a CMEK, the new account owner can access the data freely.</li>
+    <li><strong>Key Policy Privilege Escalation:</strong> If a user has <code>kms:PutKeyPolicy</code> on a key, they can modify the key policy to grant themselves decrypt access.</li>
+    <li><strong>Cross-Account Key Grants:</strong> AWS KMS Grants can delegate decryption to external accounts. If grants are not audited, persistent access can be hidden.</li>
+  </ul>
+</div>
+
+<div class="defence-list">
+  <h4>Defences</h4>
+  <ul>
+    <li>Apply least privilege to key policies: separate key administrators (manage, rotate) from key users (encrypt, decrypt).</li>
+    <li>Use separate CMEKs per environment (dev/staging/prod) to prevent cross-environment decryption.</li>
+    <li>Enable automatic key rotation (AWS: 365 days default; GCP: set a rotation schedule).</li>
+    <li>Monitor <code>kms:Decrypt</code> and <code>kms:CreateGrant</code> calls in CloudTrail; alert on unusual volume or cross-account calls.</li>
+    <li>Use SCP to deny <code>kms:PutKeyPolicy</code> except for the security tooling account.</li>
+    <li>In GCP, use Org Policy <code>constraints/gcp.restrictCmekCryptoKeyProjects</code> to limit which projects can host CMEK keys.</li>
+    <li>Require CMEK for all data services via preventive policies or Config Rules.</li>
+  </ul>
+</div>
+
+<h3>Code: KMS Key with Restrictive Policy (AWS)</h3>
+
+<pre>
+{
+  "Version": "2012-10-17",
+  "Id": "restrictive-key-policy",
+  "Statement": [
+    {
+      "Sid": "KeyAdminOnly",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::111111111111:role/KeyAdminRole"
+      },
+      "Action": [
+        "kms:Create*",
+        "kms:Describe*",
+        "kms:Enable*",
+        "kms:List*",
+        "kms:Put*",
+        "kms:Update*",
+        "kms:Revoke*",
+        "kms:Disable*",
+        "kms:Get*",
+        "kms:Delete*",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "kms:ScheduleKeyDeletion",
+        "kms:CancelKeyDeletion"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "KeyUsersEncryptDecrypt",
+      "Effect": "Allow",
+      "Principal": {
+        "AWS": "arn:aws:iam::111111111111:role/AppServiceRole"
+      },
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey",
+        "kms:GenerateDataKeyWithoutPlaintext",
+        "kms:DescribeKey"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "kms:ViaService": "s3.us-east-1.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "DenyEveryoneElse",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": "kms:*",
+      "Resource": "*",
+      "Condition": {
+        "StringNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::111111111111:role/KeyAdminRole",
+            "arn:aws:iam::111111111111:role/AppServiceRole"
+          ]
+        }
+      }
+    }
+  ]
+}
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">AWS</span>
+    <a href="https://docs.aws.amazon.com/kms/latest/developerguide/concepts.html">KMS Concepts</a>
+    <a href="https://docs.aws.amazon.com/kms/latest/developerguide/key-policies.html">Key Policies</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">GCP</span>
+    <a href="https://cloud.google.com/kms/docs/envelope-encryption">Envelope Encryption</a>
+    <a href="https://cloud.google.com/kms/docs/cmek">CMEK Overview</a>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 6: COMPUTE SECURITY                                  -->
+<!-- ============================================================ -->
+
+<h2 id="compute">6. Compute Security</h2>
+
+<p>Compute workloads span VMs, serverless functions, and containers. Each model shifts the security boundary differently, but the core principles remain: enforce least-privilege identity, harden the runtime, and minimize attack surface.</p>
+
+<h3>Virtual Machines: EC2 and GCE</h3>
+
+<table>
+  <tr>
+    <th>Security Concern</th>
+    <th>AWS EC2</th>
+    <th>GCP GCE</th>
+  </tr>
+  <tr>
+    <td>Instance Identity</td>
+    <td>Instance Profile (IAM Role)</td>
+    <td>Service Account (attached to VM)</td>
+  </tr>
+  <tr>
+    <td>Metadata Protection</td>
+    <td>IMDSv2 (token-based, hop-limited)</td>
+    <td>Metadata-Flavor header requirement</td>
+  </tr>
+  <tr>
+    <td>Patching</td>
+    <td>Systems Manager Patch Manager</td>
+    <td>OS Patch Management (VM Manager)</td>
+  </tr>
+  <tr>
+    <td>Integrity Monitoring</td>
+    <td>Nitro TPM / Trusted Boot</td>
+    <td>Shielded VMs (vTPM, Secure Boot, Integrity Monitoring)</td>
+  </tr>
+  <tr>
+    <td>Confidential Computing</td>
+    <td>Nitro Enclaves, AMD SEV-SNP on EC2</td>
+    <td>Confidential VMs (AMD SEV)</td>
+  </tr>
+  <tr>
+    <td>SSH Access</td>
+    <td>EC2 Instance Connect, SSM Session Manager</td>
+    <td>OS Login, IAP TCP Forwarding</td>
+  </tr>
+</table>
+
+<h3>Serverless: Lambda and Cloud Functions</h3>
+
+<p>Serverless shifts OS management to the provider, but application-level risks remain. The execution role/service account determines what cloud APIs the function can call. Over-privileged serverless functions are a major risk because they are often event-triggered with user-controlled input.</p>
+
+<ul>
+  <li><strong>Execution Role Scope:</strong> Each Lambda function should have its own dedicated IAM role with only the permissions it needs. Reusing roles across functions violates least privilege.</li>
+  <li><strong>Event Injection:</strong> Functions triggered by API Gateway, S3, SQS, or Pub/Sub receive event payloads that may contain user-controlled data. If this data is passed to shell commands, SQL queries, or downstream APIs without validation, injection attacks are possible.</li>
+  <li><strong>Secrets Management:</strong> Never embed secrets in function code or environment variables in plaintext. Use AWS Secrets Manager, GCP Secret Manager, or SSM Parameter Store (SecureString).</li>
+  <li><strong>Cold Start and Execution Environment:</strong> Lambda reuses execution environments across invocations. Data left in <code>/tmp</code> or global variables persists and may leak between tenants in multi-tenant designs.</li>
+</ul>
+
+<h3>Containers: EKS and GKE</h3>
+
+<p>Managed Kubernetes adds a control-plane layer managed by the provider, but the workload pods, RBAC, and network policies are the customer's responsibility.</p>
+
+<ul>
+  <li><strong>Pod Security:</strong> Use Pod Security Standards (Restricted profile) to enforce non-root containers, read-only root filesystems, and dropped capabilities. Replace the deprecated PodSecurityPolicy with Pod Security Admission or a policy engine like Kyverno/Gatekeeper.</li>
+  <li><strong>Workload Identity:</strong> Both EKS and GKE support mapping Kubernetes service accounts to cloud IAM roles/service accounts. This eliminates the need for node-level credentials that all pods on a node would share.
+    <ul>
+      <li><strong>EKS:</strong> IAM Roles for Service Accounts (IRSA) via OIDC federation, or EKS Pod Identity.</li>
+      <li><strong>GKE:</strong> Workload Identity maps a KSA to a GCP service account.</li>
+    </ul>
+  </li>
+  <li><strong>Image Scanning:</strong> Scan images in ECR (via Amazon Inspector) or Artifact Registry (via Artifact Analysis / Container Scanning) before deployment.</li>
+  <li><strong>Binary Authorization (GKE):</strong> Enforces that only signed, attested images can be deployed. Uses attestations stored in Artifact Analysis to verify provenance.</li>
+  <li><strong>Network Policies:</strong> Kubernetes NetworkPolicy objects restrict pod-to-pod traffic. Both EKS (with Calico or VPC CNI network policy) and GKE (with Dataplane V2 / Calico) support them. Default-deny and allow only required paths.</li>
+</ul>
+
+<div class="attack-box">
+  <div class="attack-label">Attack Vectors</div>
+  <ul>
+    <li><strong>IMDS Credential Theft:</strong> An SSRF or RCE on an EC2/GCE instance allows querying the metadata endpoint for temporary credentials. On EC2 with IMDSv1, a simple GET request suffices. On GCE, the <code>Metadata-Flavor: Google</code> header is trivially added.</li>
+    <li><strong>Over-Privileged Lambda:</strong> A Lambda with <code>s3:*</code> and <code>iam:*</code> permissions that processes user-uploaded files becomes a full-privilege gateway if the handler has an injection flaw.</li>
+    <li><strong>Container Escape:</strong> Running containers as root with <code>--privileged</code> or with <code>SYS_ADMIN</code> capability allows kernel exploits to escape to the host node, accessing kubelet credentials and other pods.</li>
+    <li><strong>Node-Level SA Theft (GKE):</strong> Without Workload Identity, every pod on a GKE node can access the node's GCE service account token via the metadata server. One compromised pod compromises all.</li>
+    <li><strong>Kubelet API:</strong> If the kubelet API (port 10250) is exposed without authentication, attackers can exec into any pod on that node.</li>
+  </ul>
+</div>
+
+<div class="defence-list">
+  <h4>Defences</h4>
+  <ul>
+    <li>Enforce IMDSv2 with <code>HttpPutResponseHopLimit: 1</code> on all EC2 instances. Use an SCP to deny <code>ec2:RunInstances</code> unless <code>ec2:MetadataHttpTokens</code> is <code>required</code>.</li>
+    <li>In GKE, enable Workload Identity and metadata concealment on all clusters. Remove the default compute service account from node pools.</li>
+    <li>Give every Lambda / Cloud Function a dedicated, minimally-scoped execution role.</li>
+    <li>Run all containers as non-root with a read-only root filesystem and dropped <code>ALL</code> capabilities.</li>
+    <li>Enforce image signing: Binary Authorization (GKE) or a Kyverno policy that verifies cosign signatures (EKS).</li>
+    <li>Use Kubernetes NetworkPolicy to default-deny all ingress and egress, then allow specific paths.</li>
+    <li>Scan images in CI/CD and block deployment if critical CVEs are found.</li>
+  </ul>
+</div>
+
+<h3>Code Examples</h3>
+
+<h4>AWS — Enforce IMDSv2 via SCP</h4>
+<pre>
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "RequireIMDSv2",
+      "Effect": "Deny",
+      "Action": "ec2:RunInstances",
+      "Resource": "arn:aws:ec2:*:*:instance/*",
+      "Condition": {
+        "StringNotEquals": {
+          "ec2:MetadataHttpTokens": "required"
+        }
+      }
+    }
+  ]
+}
+</pre>
+
+<h4>GKE — Enable Workload Identity</h4>
+<pre>
+# Enable Workload Identity on an existing GKE cluster
+gcloud container clusters update my-cluster \
+  --region=us-central1 \
+  --workload-pool=my-project.svc.id.goog
+
+# Create a GCP service account
+gcloud iam service-accounts create app-sa \
+  --display-name="Application Service Account"
+
+# Grant the GCP SA only the permissions it needs
+gcloud projects add-iam-policy-binding my-project \
+  --member="serviceAccount:app-sa@my-project.iam.gserviceaccount.com" \
+  --role="roles/storage.objectViewer"
+
+# Allow the Kubernetes SA to impersonate the GCP SA
+gcloud iam service-accounts add-iam-policy-binding \
+  app-sa@my-project.iam.gserviceaccount.com \
+  --role="roles/iam.workloadIdentityUser" \
+  --member="serviceAccount:my-project.svc.id.goog[app-namespace/app-ksa]"
+
+# Annotate the Kubernetes service account
+kubectl annotate serviceaccount app-ksa \
+  --namespace=app-namespace \
+  iam.gke.io/gcp-service-account=app-sa@my-project.iam.gserviceaccount.com
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">AWS</span>
+    <a href="https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html">IMDSv2</a>
+    <a href="https://docs.aws.amazon.com/eks/latest/userguide/iam-roles-for-service-accounts.html">IRSA</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">GCP</span>
+    <a href="https://cloud.google.com/kubernetes-engine/docs/how-to/workload-identity">GKE Workload Identity</a>
+    <a href="https://cloud.google.com/binary-authorization/docs/overview">Binary Authorization</a>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 7: STORAGE SECURITY                                  -->
+<!-- ============================================================ -->
+
+<h2 id="storage">7. Storage Security</h2>
+
+<p>Object storage (S3 and GCS) is the most commonly misconfigured cloud service. Public bucket exposures have caused some of the most damaging cloud breaches. Both providers have added multiple layers of protection — but only if you enable them.</p>
+
+<h3>Amazon S3 Security</h3>
+
+<h4>Access Control Layers</h4>
+
+<div class="info-box note">
+  <strong>Note:</strong> These layers are evaluated collectively, not sequentially. An explicit deny in any layer overrides allows elsewhere. Block Public Access acts as a hard override on top of all other policies.
+</div>
+
+<ul>
+  <li><strong>S3 Block Public Access:</strong> An account-level or bucket-level setting that overrides any policy or ACL that would grant public access. This is the most important single control.</li>
+  <li><strong>Bucket Policy:</strong> Resource-based JSON policy attached to the bucket. Controls who can access what objects and under what conditions.</li>
+  <li><strong>IAM Policies:</strong> Identity-based policies on users/roles. Combined with bucket policies using the standard policy evaluation logic.</li>
+  <li><strong>ACLs (Legacy):</strong> Object-level and bucket-level ACLs. AWS recommends disabling ACLs entirely (BucketOwnerEnforced) and using policies instead.</li>
+  <li><strong>Access Points:</strong> Named network endpoints with their own policy, scoped to a VPC or internet. Simplify access management for shared buckets.</li>
+</ul>
+
+<h4>Pre-Signed URLs</h4>
+<p>Pre-signed URLs grant time-limited access to a specific S3 object. The URL inherits the permissions of the IAM principal who generated it. Set short expiration times (minutes, not hours). The URL becomes invalid if the signing principal's permissions are revoked.</p>
+
+<h3>Google Cloud Storage Security</h3>
+
+<h4>Access Control</h4>
+<ul>
+  <li><strong>Uniform Bucket-Level Access:</strong> Disables ACLs entirely and uses only IAM for access control. Google recommends this for all buckets. Once enabled for 90 days, it becomes permanent.</li>
+  <li><strong>IAM Bindings:</strong> Grant roles on buckets or projects. <code>roles/storage.objectViewer</code>, <code>roles/storage.objectCreator</code>, etc.</li>
+  <li><strong>Signed URLs:</strong> Equivalent to S3 pre-signed URLs. Created by a service account; time-limited.</li>
+  <li><strong>allUsers / allAuthenticatedUsers:</strong> Special IAM members that make buckets/objects public. Org Policies can block these.</li>
+</ul>
+
+<div class="attack-box">
+  <div class="attack-label">Attack Vectors</div>
+  <ul>
+    <li><strong>Public Buckets:</strong> A bucket policy with <code>"Principal": "*"</code> and no condition keys makes the bucket world-readable. Attackers use tools like <code>grayhatwarfare.com</code> and bucket enumeration scripts to discover these.</li>
+    <li><strong>ACL Misconfiguration:</strong> Legacy ACLs granting <code>s3:GetObject</code> to <code>AllUsers</code> or <code>AuthenticatedUsers</code>. The "AuthenticatedUsers" group includes <em>any</em> AWS account, not just your org.</li>
+    <li><strong>Overly Broad Principal:</strong> A bucket policy that uses <code>"Principal": {"AWS": "*"}</code> without a condition key allows any authenticated AWS principal to access the bucket.</li>
+    <li><strong>Write Access Abuse:</strong> If an attacker can write to an S3 bucket that hosts static content, CloudFormation templates, or Lambda deployment packages, they can inject malicious payloads.</li>
+    <li><strong>Bucket Name Squatting:</strong> If you delete a bucket and an attacker recreates it with the same name, any client still referencing that bucket name sends data to the attacker.</li>
+  </ul>
+</div>
+
+<div class="info-box warning">
+  <strong>Case Study: Capital One (2019).</strong> An SSRF vulnerability in a WAF/reverse proxy running on an EC2 instance allowed the attacker to query the IMDSv1 metadata service. The attacker queried the EC2 metadata service (IMDSv1) to obtain temporary credentials for an IAM role. That role had overly broad S3 permissions, allowing the attacker to exfiltrate 100+ million customer records from S3 buckets. The root causes: IMDSv1 (no SSRF protection), an over-privileged IAM role, and insufficient network segmentation. This breach drove AWS to aggressively promote IMDSv2 and S3 Block Public Access.
+</div>
+
+<div class="defence-list">
+  <h4>Defences</h4>
+  <ul>
+    <li><strong>Enable S3 Block Public Access at the organization level</strong> via SCP. This single control prevents the most common S3 exposure vector.</li>
+    <li><strong>Disable ACLs</strong> on all S3 buckets (set <code>ObjectOwnership: BucketOwnerEnforced</code>).</li>
+    <li><strong>Enable Uniform Bucket-Level Access</strong> on all GCS buckets. Use an Org Policy to enforce this.</li>
+    <li><strong>Use GCP Org Policy</strong> <code>constraints/storage.publicAccessPrevention</code> set to <code>enforced</code> at the org level.</li>
+    <li>Enable S3 server access logging or CloudTrail data events for sensitive buckets.</li>
+    <li>Enable GCS data access audit logs for sensitive buckets.</li>
+    <li>Use S3 Object Lock (WORM) for compliance data that must be immutable.</li>
+    <li>Require <code>aws:SecureTransport</code> condition in bucket policies to deny non-HTTPS requests.</li>
+    <li>Use VPC endpoints / Private Google Access so storage traffic never traverses the public internet.</li>
+  </ul>
+</div>
+
+<h3>Code Examples</h3>
+
+<h4>AWS SCP — Enforce S3 Block Public Access</h4>
+<pre>
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DenyS3PublicAccessChanges",
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutAccountPublicAccessBlock"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringNotLike": {
+          "aws:PrincipalArn": [
+            "arn:aws:iam::*:role/SecurityToolingRole"
+          ]
+        }
+      }
+    },
+    {
+      "Sid": "DenyPublicACLs",
+      "Effect": "Deny",
+      "Action": [
+        "s3:PutBucketAcl",
+        "s3:PutObjectAcl"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-acl": [
+            "public-read",
+            "public-read-write",
+            "authenticated-read"
+          ]
+        }
+      }
+    }
+  ]
+}
+</pre>
+
+<h4>GCP Org Policy — Prevent Public GCS Buckets</h4>
+<pre>
+# Enforce public access prevention at the organization level
+gcloud resource-manager org-policies set-policy \
+  --organization=123456789012 \
+  storage-policy.yaml
+
+# storage-policy.yaml:
+# constraint: constraints/storage.publicAccessPrevention
+# booleanPolicy:
+#   enforced: true
+
+# Enforce uniform bucket-level access
+gcloud resource-manager org-policies set-policy \
+  --organization=123456789012 \
+  uniform-access-policy.yaml
+
+# uniform-access-policy.yaml:
+# constraint: constraints/storage.uniformBucketLevelAccess
+# booleanPolicy:
+#   enforced: true
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">AWS</span>
+    <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/access-control-block-public-access.html">Block Public Access</a>
+    <a href="https://docs.aws.amazon.com/AmazonS3/latest/userguide/object-lock.html">S3 Object Lock</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">GCP</span>
+    <a href="https://cloud.google.com/storage/docs/uniform-bucket-level-access">Uniform Bucket-Level Access</a>
+    <a href="https://cloud.google.com/storage/docs/public-access-prevention">Public Access Prevention</a>
+  </div>
+</div>
+
+
+<!-- ============================================================ -->
+<!-- SECTION 8: LOGGING & DETECTION                               -->
+<!-- ============================================================ -->
+
+<h2 id="logging">8. Logging &amp; Detection</h2>
+
+<p>Visibility is the foundation of cloud defense. You cannot detect what you do not log, and you cannot investigate what you cannot query. Both AWS and GCP provide comprehensive logging services, but they must be centralized, protected, and monitored.</p>
+
+<h3>AWS Logging Stack</h3>
+
+<table>
+  <tr>
+    <th>Service</th>
+    <th>What It Captures</th>
+    <th>Key Notes</th>
+  </tr>
+  <tr>
+    <td><strong>CloudTrail</strong></td>
+    <td>API calls (management events + optional data events)</td>
+    <td>Organization trail covers all accounts. Data events for S3/Lambda cost extra but are critical for forensics.</td>
+  </tr>
+  <tr>
+    <td><strong>VPC Flow Logs</strong></td>
+    <td>Network metadata (src/dst IP, port, protocol, bytes, accept/reject)</td>
+    <td>Enable on all VPCs and subnets. Does not capture packet contents. Enriched format includes VPC ID, subnet ID, instance ID.</td>
+  </tr>
+  <tr>
+    <td><strong>GuardDuty</strong></td>
+    <td>Threat detection (DNS, CloudTrail, VPC flows, S3, EKS, Lambda, RDS)</td>
+    <td>ML-based anomaly detection. Enable in all regions and all accounts via delegated admin. Findings feed into Security Hub.</td>
+  </tr>
+  <tr>
+    <td><strong>Security Hub</strong></td>
+    <td>Aggregated security findings from GuardDuty, Inspector, Config, Macie, Firewall Manager, third-party tools</td>
+    <td>Applies security standards (CIS, PCI, AWS FSBP). Central dashboard for security posture.</td>
+  </tr>
+  <tr>
+    <td><strong>AWS Config</strong></td>
+    <td>Resource configuration history and compliance</td>
+    <td>Records every configuration change. Config Rules evaluate compliance. Remediation actions via SSM.</td>
+  </tr>
+</table>
+
+<h3>GCP Logging Stack</h3>
+
+<table>
+  <tr>
+    <th>Service</th>
+    <th>What It Captures</th>
+    <th>Key Notes</th>
+  </tr>
+  <tr>
+    <td><strong>Cloud Audit Logs</strong></td>
+    <td>Admin Activity (always on), Data Access (must enable), System Event, Policy Denied</td>
+    <td>Admin Activity logs are free and immutable. Data Access logs must be explicitly enabled and can be expensive at scale.</td>
+  </tr>
+  <tr>
+    <td><strong>VPC Flow Logs</strong></td>
+    <td>Network metadata similar to AWS</td>
+    <td>Configured per subnet. Sampling rate is configurable (100% for security use cases). Stored in Cloud Logging.</td>
+  </tr>
+  <tr>
+    <td><strong>Security Command Center (SCC)</strong></td>
+    <td>Unified security and risk dashboard. Includes Security Health Analytics, Event Threat Detection, Container Threat Detection, Virtual Machine Threat Detection.</td>
+    <td>SCC Premium required for threat detection. Standard tier covers basic vulnerability and misconfiguration findings.</td>
+  </tr>
+  <tr>
+    <td><strong>Chronicle</strong></td>
+    <td>Google's SIEM/SOAR platform. Ingests logs at petabyte scale with 12-month hot retention.</td>
+    <td>YARA-L detection rules. Integrates with SCC findings. UDM (Unified Data Model) normalizes log sources.</td>
+  </tr>
+</table>
+
+<h3>What to Alert On</h3>
+
+<table>
+  <tr>
+    <th>Event</th>
+    <th>AWS Signal</th>
+    <th>GCP Signal</th>
+    <th>Severity</th>
+  </tr>
+  <tr>
+    <td>Root / Super Admin login</td>
+    <td>CloudTrail: <code>ConsoleLogin</code> by root</td>
+    <td>Audit Log: Super Admin sign-in</td>
+    <td>Critical</td>
+  </tr>
+  <tr>
+    <td>CloudTrail / Audit Logging disabled</td>
+    <td><code>StopLogging</code>, <code>DeleteTrail</code></td>
+    <td>Org Policy constraint removed</td>
+    <td>Critical</td>
+  </tr>
+  <tr>
+    <td>IAM policy with <code>*:*</code></td>
+    <td><code>PutUserPolicy</code>, <code>CreatePolicyVersion</code></td>
+    <td><code>SetIamPolicy</code> with Owner role</td>
+    <td>High</td>
+  </tr>
+  <tr>
+    <td>New access key for root/SA</td>
+    <td><code>CreateAccessKey</code></td>
+    <td><code>CreateServiceAccountKey</code></td>
+    <td>High</td>
+  </tr>
+  <tr>
+    <td>Public bucket created</td>
+    <td>Config Rule: <code>s3-bucket-public-read-prohibited</code></td>
+    <td>SCC: PUBLIC_BUCKET finding</td>
+    <td>High</td>
+  </tr>
+  <tr>
+    <td>Security group opened to 0.0.0.0/0</td>
+    <td>Config Rule: <code>restricted-ssh</code>, GuardDuty</td>
+    <td>SCC: OPEN_FIREWALL finding</td>
+    <td>High</td>
+  </tr>
+  <tr>
+    <td>Crypto mining detected</td>
+    <td>GuardDuty: <code>CryptoCurrency:EC2/BitcoinTool.B!DNS</code></td>
+    <td>SCC: VM Threat Detection finding</td>
+    <td>High</td>
+  </tr>
+  <tr>
+    <td>Unusual API volume / region</td>
+    <td>GuardDuty anomaly findings</td>
+    <td>Event Threat Detection findings</td>
+    <td>Medium</td>
+  </tr>
+  <tr>
+    <td>Failed MFA / brute force</td>
+    <td>CloudTrail: repeated <code>ConsoleLogin</code> failures</td>
+    <td>Google Workspace: login audit events</td>
+    <td>Medium</td>
+  </tr>
+</table>
+
+<h3>AWS vs GCP Logging Comparison</h3>
+
+<table>
+  <tr>
+    <th>Feature</th>
+    <th>AWS</th>
+    <th>GCP</th>
+  </tr>
+  <tr>
+    <td>API Audit Trail</td>
+    <td>CloudTrail (org trail)</td>
+    <td>Cloud Audit Logs (org sink)</td>
+  </tr>
+  <tr>
+    <td>Threat Detection</td>
+    <td>GuardDuty</td>
+    <td>SCC Premium (Event Threat Detection)</td>
+  </tr>
+  <tr>
+    <td>Posture Management</td>
+    <td>Security Hub + Config</td>
+    <td>SCC (Security Health Analytics)</td>
+  </tr>
+  <tr>
+    <td>SIEM</td>
+    <td>Amazon Security Lake + OpenSearch / 3rd party</td>
+    <td>Chronicle</td>
+  </tr>
+  <tr>
+    <td>Centralized Log Storage</td>
+    <td>S3 (log archive account)</td>
+    <td>Cloud Logging org sink to GCS/BigQuery</td>
+  </tr>
+  <tr>
+    <td>Config Drift Detection</td>
+    <td>AWS Config</td>
+    <td>SCC + Cloud Asset Inventory</td>
+  </tr>
+  <tr>
+    <td>Automated Remediation</td>
+    <td>Config Remediation, EventBridge + Lambda</td>
+    <td>SCC Notifications + Cloud Functions</td>
+  </tr>
+</table>
+
+<div class="attack-box">
+  <div class="attack-label">Attack Vectors</div>
+  <ul>
+    <li><strong>CloudTrail Tampering:</strong> An attacker with <code>cloudtrail:StopLogging</code> or <code>cloudtrail:DeleteTrail</code> can blind defenders. This is the first action sophisticated attackers take. Even updating a trail to exclude specific event types can evade detection.</li>
+    <li><strong>Log Evasion:</strong> Some AWS actions are not logged by CloudTrail by default (e.g., certain S3 data events, CloudWatch Logs:GetLogEvents). Attackers can operate in these blind spots.</li>
+    <li><strong>GuardDuty Suppression:</strong> An attacker with <code>guardduty:CreateFilter</code> can create a filter that auto-archives specific finding types, effectively suppressing alerts.</li>
+    <li><strong>GCP Audit Log Gaps:</strong> Data Access logs are not enabled by default. Without them, an attacker who reads data (BigQuery queries, GCS object reads) leaves no trace.</li>
+    <li><strong>Log Deletion:</strong> If CloudTrail logs are stored in an S3 bucket without Object Lock or MFA Delete, an attacker with S3 permissions can delete the evidence.</li>
+  </ul>
+</div>
+
+<div class="defence-list">
+  <h4>Defences</h4>
+  <ul>
+    <li><strong>Immutable Logging:</strong> Store CloudTrail logs in a dedicated log archive account. Enable S3 Object Lock (Governance or Compliance mode) on the log bucket. Use MFA Delete. The log archive account should have an SCP that denies all actions except read-only access by the SIEM.</li>
+    <li><strong>Organization-Level Trails / Sinks:</strong> Create a CloudTrail Organization Trail or GCP org-level log sink. Individual accounts/projects cannot disable these.</li>
+    <li><strong>Enable Data Events / Data Access Logs:</strong> For sensitive S3 buckets and GCS buckets, enable data event logging. In GCP, enable Data Access audit logs for BigQuery, GCS, Pub/Sub, and other data services.</li>
+    <li><strong>SIEM Integration:</strong> Forward all logs to a SIEM (Splunk, Elastic, Chronicle, Amazon Security Lake). Build detection rules for the alert table above.</li>
+    <li><strong>Automated Remediation:</strong> Use EventBridge + Lambda (AWS) or SCC Notifications + Cloud Functions (GCP) to automatically remediate common issues (e.g., close public security groups, revoke public bucket access).</li>
+    <li><strong>SCP / Org Policy:</strong> Deny <code>cloudtrail:StopLogging</code>, <code>cloudtrail:DeleteTrail</code>, <code>guardduty:DeleteDetector</code>, <code>guardduty:CreateFilter</code> except from the security account.</li>
+  </ul>
+</div>
+
+<h3>Code Examples</h3>
+
+<h4>AWS — Organization CloudTrail Trail</h4>
+<pre>
+resource "aws_cloudtrail" "org_trail" {
+  name                          = "org-security-trail"
+  s3_bucket_name                = aws_s3_bucket.cloudtrail_logs.id
+  s3_key_prefix                 = "cloudtrail"
+  include_global_service_events = true
+  is_multi_region_trail         = true
+  is_organization_trail         = true
+  enable_log_file_validation    = true
+  kms_key_id                    = aws_kms_key.cloudtrail.arn
+
+  cloud_watch_logs_group_arn = "${aws_cloudwatch_log_group.cloudtrail.arn}:*"
+  cloud_watch_logs_role_arn  = aws_iam_role.cloudtrail_cw.arn
+
+  event_selector {
+    read_write_type           = "All"
+    include_management_events = true
+
+    data_resource {
+      type   = "AWS::S3::Object"
+      values = ["arn:aws:s3:::sensitive-data-bucket/"]
+    }
+  }
+
+  insight_selectors {
+    insight_type = "ApiCallRateInsight"
+  }
+
+  insight_selectors {
+    insight_type = "ApiErrorRateInsight"
+  }
+
+  tags = {
+    Environment = "security"
+    ManagedBy   = "terraform"
+  }
+}
+
+# Protect the log bucket with Object Lock
+resource "aws_s3_bucket" "cloudtrail_logs" {
+  bucket              = "org-cloudtrail-logs-${data.aws_caller_identity.current.account_id}"
+  object_lock_enabled = true
+}
+
+resource "aws_s3_bucket_object_lock_configuration" "cloudtrail_lock" {
+  bucket = aws_s3_bucket.cloudtrail_logs.id
+
+  rule {
+    default_retention {
+      mode = "GOVERNANCE"
+      days = 365
+    }
+  }
+}
+</pre>
+
+<h4>GCP — Organization Log Sink</h4>
+<pre>
+# Create a centralized log sink at the organization level
+# All audit logs from all projects are routed to a central destination
+
+# Option 1: Sink to a BigQuery dataset (for querying)
+gcloud logging sinks create org-audit-sink \
+  bigquery.googleapis.com/projects/security-project/datasets/org_audit_logs \
+  --organization=123456789012 \
+  --include-children \
+  --log-filter='logName:"cloudaudit.googleapis.com"'
+
+# Option 2: Sink to a GCS bucket (for long-term storage)
+gcloud logging sinks create org-audit-archive \
+  storage.googleapis.com/org-audit-logs-archive \
+  --organization=123456789012 \
+  --include-children \
+  --log-filter='logName:"cloudaudit.googleapis.com"'
+
+# Grant the sink's service account write access to the destination
+# (the sink create command outputs the service account to grant)
+gcloud projects add-iam-policy-binding security-project \
+  --member="serviceAccount:o123456789012-111111@gcp-sa-logging.iam.gserviceaccount.com" \
+  --role="roles/bigquery.dataEditor"
+
+# Enable Data Access audit logs for all services at the org level
+gcloud organizations set-iam-policy 123456789012 org-policy.yaml
+# In org-policy.yaml, include:
+# auditConfigs:
+# - auditLogConfigs:
+#   - logType: ADMIN_READ
+#   - logType: DATA_READ
+#   - logType: DATA_WRITE
+#   service: allServices
+</pre>
+
+<div class="info-box key">
+  <strong>Retention planning:</strong> CloudTrail event history retains 90 days for free. For longer retention, deliver to S3 and/or CloudWatch Logs. GCP Admin Activity audit logs are retained for 400 days. Data Access logs are retained for 30 days in Cloud Logging. For longer retention, route to BigQuery (queryable) or GCS (archival). Plan for at least 1 year of hot retention for incident response capability.
+</div>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">AWS</span>
+    <a href="https://docs.aws.amazon.com/awscloudtrail/latest/userguide/cloudtrail-create-and-update-an-organizational-trail.html">Org Trail</a>
+    <a href="https://docs.aws.amazon.com/guardduty/latest/ug/what-is-guardduty.html">GuardDuty</a>
+    <a href="https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html">Security Hub</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">GCP</span>
+    <a href="https://cloud.google.com/logging/docs/audit">Audit Logs</a>
+    <a href="https://cloud.google.com/security-command-center/docs/concepts-security-command-center-overview">SCC</a>
+    <a href="https://cloud.google.com/chronicle/docs/overview">Chronicle</a>
+  </div>
+</div>
+
+</main>
+
+<script>
+document.querySelectorAll('nav a[href^="#"]').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    document.querySelector(link.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth' });
+  });
+});
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      document.querySelectorAll('nav a').forEach(a => a.classList.remove('active'));
+      const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -80% 0px' });
+document.querySelectorAll('h2[id]').forEach(h => observer.observe(h));
+</script>
+
+</body>
+</html>

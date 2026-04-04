@@ -92,9 +92,13 @@
       <span style="font-size:16px;">📝</span>
       <div><div style="font-weight:700;">Study Notes</div><div style="font-size:10px;opacity:0.7;">Active learning tracker</div></div>
     </a>
-    <a href="crypto-mind-map.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(124,92,252,0.08);border:1px solid rgba(124,92,252,0.25);border-radius:7px;color:var(--accent2);text-decoration:none;font-size:12px;transition:all 0.15s;" onmouseover="this.style.background='rgba(124,92,252,0.16)'" onmouseout="this.style.background='rgba(124,92,252,0.08)'">
+    <a href="crypto-mind-map.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(124,92,252,0.08);border:1px solid rgba(124,92,252,0.25);border-radius:7px;color:var(--accent2);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(124,92,252,0.16)'" onmouseout="this.style.background='rgba(124,92,252,0.08)'">
       <span style="font-size:16px;">🗺️</span>
       <div><div style="font-weight:700;">Mind Map</div><div style="font-size:10px;opacity:0.7;">Interactive concept map</div></div>
+    </a>
+    <a href="cloud-security.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.25);border-radius:7px;color:var(--accent);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(0,212,170,0.16)'" onmouseout="this.style.background='rgba(0,212,170,0.08)'">
+      <span style="font-size:16px;">&#9729;</span>
+      <div><div style="font-weight:700;">Cloud Security</div><div style="font-size:10px;opacity:0.7;">AWS &amp; GCP security guide</div></div>
     </a>
   </div>
 
@@ -845,15 +849,16 @@ Permissions-Policy: geolocation=(self "https://maps.example.com")
 # accelerometer, gyroscope, magnetometer
 # autoplay, fullscreen, picture-in-picture
 # document-domain, sync-xhr, encrypted-media
-# cross-origin-isolated (requires COOP + COEP)</pre>
+# (cross-origin isolation is controlled by COOP/COEP headers, not Permissions Policy)</pre>
 
   <h3>iframe Delegation</h3>
   <pre>&lt;!-- Iframe inherits parent's Permissions Policy restrictions --&gt;
 &lt;!-- To grant a feature to an iframe, use the allow attribute --&gt;
 &lt;iframe src="https://maps.example.com/embed"
-  allow="geolocation 'src'; camera 'none'"&gt;
+  allow="geolocation"&gt;
 &lt;/iframe&gt;
-&lt;!-- 'src' = the iframe's own origin; 'none' = no origin --&gt;</pre>
+&lt;!-- In Permissions Policy, listing a feature in allow grants it to the iframe's origin.
+     Omitting a feature denies it (e.g., camera is denied here because it is not listed). --&gt;</pre>
 
   <div class="refs">
     <div class="refs-title">References</div>
@@ -937,7 +942,7 @@ console.log(crossOriginIsolated);  // true or false</pre>
       <tr><td><code>allow-forms</code></td><td>Submit forms</td></tr>
       <tr><td><code>allow-popups</code></td><td><code>window.open()</code>, <code>&lt;a target="_blank"&gt;</code></td></tr>
       <tr><td><code>allow-popups-to-escape-sandbox</code></td><td>Popups can escape sandbox restrictions</td></tr>
-      <tr><td><code>allow-top-level-navigation</code></td><td>Navigate the top-level browsing context</td></tr>
+      <tr><td><code>allow-top-navigation</code></td><td>Navigate the top-level browsing context</td></tr>
       <tr><td><code>allow-downloads</code></td><td>Trigger downloads</td></tr>
       <tr><td><code>allow-pointer-lock</code></td><td>Pointer Lock API</td></tr>
       <tr><td><code>allow-modals</code></td><td><code>alert()</code>, <code>confirm()</code>, <code>print()</code></td></tr>
@@ -1003,9 +1008,9 @@ In the browser:
    Resolution is restored to higher precision in cross-origin isolated contexts (crossOriginIsolated = true)
    Impact: makes timing attacks significantly harder
 
-2. Disabled SharedArrayBuffer (2018–2020)
-   SharedArrayBuffer allows building precise timers via Atomics.wait()
-   Disabled globally; re-enabled only in cross-origin isolated contexts
+2. Disabled SharedArrayBuffer (Jan 2018); re-enabled only in cross-origin isolated contexts
+   (Firefox 79, July 2020; Chrome 92, July 2021)
+   SharedArrayBuffer allows building precise timers via a worker-thread busy-loop counter
 
 3. Site Isolation (Chrome, Firefox)
    Each top-level site runs in its own OS process

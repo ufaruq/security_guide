@@ -406,6 +406,7 @@
   <a href="crypto-study-notes.html">Study Notes Tracker</a>
   <a href="web-app-security.html" target="_blank">🔓 Web App Security</a>
   <a href="browser-security.html" target="_blank">🛡️ Browser Security</a>
+  <a href="cloud-security.html" target="_blank">&#9729; Cloud Security</a>
 </div>
 
 <div id="canvas">
@@ -485,7 +486,7 @@ const nodes = [
   { id: "tls-aead", title: "AEAD", sub: "Authenticated Encryption", x: -1250, y: -220, level: 3, theme: "tls", parent: "tls-cipher",
     desc: "Encryption + integrity in one operation. AES-GCM and ChaCha20-Poly1305 are the two widely deployed AEADs in TLS 1.3 (RFC 8446 defines 5 total, including two AES-CCM variants for constrained environments)." },
   { id: "tls-sni", title: "SNI / ECH", sub: "Server Name Indication", x: -700, y: -280, level: 2, theme: "tls", parent: "tls",
-    desc: "SNI sends hostname in plaintext. ECH encrypts the entire ClientHello for privacy.",
+    desc: "SNI sends hostname in plaintext. ECH encrypts the inner ClientHello (containing the real SNI) while sending a non-sensitive outer ClientHello in cleartext for routing.",
     example: "<strong>Corporate:</strong> Cloudflare deployed ECH to prevent ISPs from seeing which site behind their CDN users visit." },
   { id: "tls-inspect", title: "TLS Inspection", sub: "Corporate MITM proxy", x: -550, y: -370, level: 2, theme: "tls", parent: "tls",
     desc: "Proxy terminates TLS, inspects plaintext, re-encrypts. Requires org's root CA in trust store.",
@@ -570,8 +571,8 @@ const nodes = [
   { id: "supply-depconf", title: "Dependency Confusion", sub: "Squatting, hijacking, account takeover", x: 1000, y: 230, level: 3, theme: "supply", parent: "supply-threats",
     desc: "Several distinct attack classes: (1) Dependency confusion (Alex Birsan, 2021) — a private package name is squatted on a public registry so the package manager fetches the malicious public version instead. (2) Maintainer account takeover/hijacking — event-stream and ua-parser-js were compromised via hijacked maintainer accounts, not dependency confusion.",
     example: "<strong>Corporate:</strong> Alex Birsan's dependency confusion technique hit Apple, Microsoft, and PayPal in 2021. event-stream (2018) and ua-parser-js (2021) are examples of maintainer account hijacking — a separate attack category." },
-  { id: "supply-slsa", title: "SLSA Framework", sub: "Levels 0-3", x: 500, y: 200, level: 2, theme: "supply", parent: "supply",
-    desc: "Progressive maturity model. L0: nothing. L1: provenance. L2: hosted + signed. L3: hardened + unforgeable.",
+  { id: "supply-slsa", title: "SLSA Framework", sub: "Levels 1-3 (v1.0)", x: 500, y: 200, level: 2, theme: "supply", parent: "supply",
+    desc: "Progressive maturity model. L1: provenance exists. L2: hosted build platform. L3: hardened build platform (unforgeable provenance).",
     example: "<strong>Corporate:</strong> Google developed SLSA; GitHub Actions now generates SLSA L3 provenance for public repos." },
   { id: "supply-provenance", title: "Provenance", sub: "in-toto attestations", x: 300, y: 140, level: 3, theme: "supply", parent: "supply-slsa",
     desc: "Signed statement: 'artifact X was built from source Y by builder Z.'" },
