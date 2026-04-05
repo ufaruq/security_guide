@@ -4,6 +4,9 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Web Application Security — OWASP & AppSec Reference</title>
+<script>window.Prism=window.Prism||{};Prism.manual=true;</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" defer></script>
 <style>
   :root {
     --bg: #0a0e17;
@@ -70,36 +73,75 @@
   .attack-box { background: rgba(255,107,107,0.06); border: 1px solid rgba(255,107,107,0.2); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
   .attack-box .attack-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent3); margin-bottom: 8px; font-weight: 600; }
 
+  .site-nav { padding: 10px 14px 14px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+  .site-nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 8px; }
+  .site-nav-card { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid; border-radius: 7px; text-decoration: none; font-size: 12px; margin-bottom: 6px; transition: all 0.15s; }
+  .site-nav-card:hover { filter: brightness(1.2); }
+  .site-nav-card.current { opacity: 0.4; pointer-events: none; }
+  .site-nav-card .nav-icon { font-size: 16px; flex-shrink: 0; }
+  .site-nav-card .nav-title { font-weight: 700; }
+  .site-nav-card .nav-desc { font-size: 10px; opacity: 0.7; }
+  .c-tls { background: rgba(0,212,170,0.08); border-color: rgba(0,212,170,0.25); color: #00d4aa; }
+  .c-tls:hover { background: rgba(0,212,170,0.16); }
+  .c-browser { background: rgba(124,92,252,0.08); border-color: rgba(124,92,252,0.25); color: #7c5cfc; }
+  .c-browser:hover { background: rgba(124,92,252,0.16); }
+  .c-webapp { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.25); color: #ff6b6b; }
+  .c-webapp:hover { background: rgba(255,107,107,0.16); }
+  .c-cloud { background: rgba(78,168,222,0.08); border-color: rgba(78,168,222,0.25); color: #4ea8de; }
+  .c-cloud:hover { background: rgba(78,168,222,0.16); }
+  .c-k8s { background: rgba(255,159,67,0.08); border-color: rgba(255,159,67,0.25); color: #ff9f43; }
+  .c-k8s:hover { background: rgba(255,159,67,0.16); }
+  .c-notes { background: rgba(255,217,61,0.08); border-color: rgba(255,217,61,0.25); color: #ffd93d; }
+  .c-notes:hover { background: rgba(255,217,61,0.16); }
+  .c-mindmap { background: rgba(224,108,159,0.08); border-color: rgba(224,108,159,0.25); color: #e06c9f; }
+  .c-mindmap:hover { background: rgba(224,108,159,0.16); }
+
+  @media print {
+    nav, .back-to-top, .copy-btn, .site-nav { display: none !important; }
+    main { margin-left: 0 !important; padding: 20px !important; max-width: 100% !important; }
+    body { background: #fff !important; color: #000 !important; }
+    h1 { -webkit-text-fill-color: #000 !important; background: none !important; }
+    h2, h3 { color: #000 !important; } h4 { color: #333 !important; }
+    pre, code { background: #f5f5f5 !important; color: #333 !important; border-color: #ddd !important; }
+    .info-box, .attack-box, .defence-list { background: #f9f9f9 !important; border-color: #999 !important; }
+    .refs { background: #f5f5f5 !important; border-color: #ddd !important; }
+    a { color: #000 !important; text-decoration: underline !important; }
+  }
+  pre { position: relative; }
+  .copy-btn { position: absolute; top: 8px; right: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); font-size: 12px; padding: 4px 8px; cursor: pointer; opacity: 0; transition: opacity 0.2s; font-family: inherit; z-index: 2; }
+  pre:hover .copy-btn { opacity: 1; }
+  .copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+  .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+  .back-to-top { position: fixed; bottom: 24px; right: 24px; width: 40px; height: 40px; background: var(--surface); border: 1px solid var(--border); border-radius: 50%; color: var(--accent); font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 90; text-decoration: none; }
+  .back-to-top.visible { opacity: 1; pointer-events: auto; }
+  .back-to-top:hover { background: var(--surface2); border-color: var(--accent); }
+  .token.comment,.token.prolog,.token.doctype,.token.cdata { color: #6a9955; font-style: italic; }
+  .token.punctuation { color: var(--text-dim); }
+  .token.property,.token.tag,.token.constant,.token.symbol,.token.deleted { color: var(--accent3); }
+  .token.boolean,.token.number { color: var(--accent3); }
+  .token.selector,.token.attr-name,.token.string,.token.char,.token.builtin,.token.inserted { color: var(--accent); }
+  .token.operator,.token.entity,.token.url,.token.variable { color: var(--text); }
+  .token.atrule,.token.attr-value,.token.function,.token.class-name { color: var(--accent4); }
+  .token.keyword { color: var(--accent2); }
+  .token.regex,.token.important { color: var(--accent4); }
+
   @media (max-width: 900px) { nav { display: none; } main { margin-left: 0; padding: 24px 20px; } h1 { font-size: 30px; } }
 </style>
 </head>
 <body>
 
 <nav>
-  <h2>Contents</h2>
+  <h2>Web App Security</h2>
 
-  <div style="padding:10px 14px 14px; border-bottom:1px solid var(--border); margin-bottom:10px;">
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--text-dim);margin-bottom:8px;">Site</div>
-    <a href="tls-cryptographic-engineering-guide.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.25);border-radius:7px;color:var(--accent);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(0,212,170,0.16)'" onmouseout="this.style.background='rgba(0,212,170,0.08)'">
-      <span style="font-size:16px;">📖</span>
-      <div><div style="font-weight:700;">TLS &amp; Crypto Guide</div><div style="font-size:10px;opacity:0.7;">Full cryptographic reference</div></div>
-    </a>
-    <a href="browser-security.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(124,92,252,0.08);border:1px solid rgba(124,92,252,0.25);border-radius:7px;color:var(--accent2);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(124,92,252,0.16)'" onmouseout="this.style.background='rgba(124,92,252,0.08)'">
-      <span style="font-size:16px;">🛡️</span>
-      <div><div style="font-weight:700;">Browser Security</div><div style="font-size:10px;opacity:0.7;">SOP, CORS, CSP, cookies &amp; more</div></div>
-    </a>
-    <a href="crypto-study-notes.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,217,61,0.08);border:1px solid rgba(255,217,61,0.25);border-radius:7px;color:var(--accent4);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(255,217,61,0.16)'" onmouseout="this.style.background='rgba(255,217,61,0.08)'">
-      <span style="font-size:16px;">📝</span>
-      <div><div style="font-weight:700;">Study Notes</div><div style="font-size:10px;opacity:0.7;">Active learning tracker</div></div>
-    </a>
-    <a href="crypto-mind-map.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(255,107,107,0.08);border:1px solid rgba(255,107,107,0.25);border-radius:7px;color:var(--accent3);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(255,107,107,0.16)'" onmouseout="this.style.background='rgba(255,107,107,0.08)'">
-      <span style="font-size:16px;">🗺️</span>
-      <div><div style="font-weight:700;">Mind Map</div><div style="font-size:10px;opacity:0.7;">Interactive concept map</div></div>
-    </a>
-    <a href="cloud-security.html" style="display:flex;align-items:center;gap:8px;padding:7px 10px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.25);border-radius:7px;color:var(--accent);text-decoration:none;font-size:12px;margin-bottom:6px;transition:all 0.15s;" onmouseover="this.style.background='rgba(0,212,170,0.16)'" onmouseout="this.style.background='rgba(0,212,170,0.08)'">
-      <span style="font-size:16px;">&#9729;</span>
-      <div><div style="font-weight:700;">Cloud Security</div><div style="font-size:10px;opacity:0.7;">AWS &amp; GCP security guide</div></div>
-    </a>
+  <div class="site-nav">
+    <div class="site-nav-label">Study Guide</div>
+    <a class="site-nav-card c-tls" href="tls-cryptographic-engineering-guide.html"><span class="nav-icon">📖</span><div><div class="nav-title">TLS &amp; Crypto Guide</div><div class="nav-desc">TLS, PKI, authentication &amp; signing</div></div></a>
+    <a class="site-nav-card c-browser" href="browser-security.html"><span class="nav-icon">🛡️</span><div><div class="nav-title">Browser Security</div><div class="nav-desc">SOP, CORS, CSP, cookies &amp; isolation</div></div></a>
+    <a class="site-nav-card c-webapp current" href="web-app-security.html"><span class="nav-icon">🔓</span><div><div class="nav-title">Web App Security</div><div class="nav-desc">OWASP, injection, XSS &amp; more</div></div></a>
+    <a class="site-nav-card c-cloud" href="cloud-security.html"><span class="nav-icon">☁</span><div><div class="nav-title">Cloud Security</div><div class="nav-desc">AWS &amp; GCP security guide</div></div></a>
+    <a class="site-nav-card c-k8s" href="kubernetes-security.html"><span class="nav-icon">☸️</span><div><div class="nav-title">Kubernetes Security</div><div class="nav-desc">Clusters, RBAC, network &amp; policy</div></div></a>
+    <a class="site-nav-card c-notes" href="crypto-study-notes.html"><span class="nav-icon">📝</span><div><div class="nav-title">Study Notes</div><div class="nav-desc">Active learning &amp; progress tracker</div></div></a>
+    <a class="site-nav-card c-mindmap" href="crypto-mind-map.html"><span class="nav-icon">🗺️</span><div><div class="nav-title">Mind Map</div><div class="nav-desc">Interactive concept map</div></div></a>
   </div>
 
   <div class="section-label">OWASP &amp; Overview</div>
@@ -617,10 +659,12 @@ document.getElementById('welcome').textContent = 'Hello, ' + name;</pre>
 
   <p>Cross-Site Request Forgery (CSRF) tricks an authenticated browser into making a state-changing request to a different origin. Because browsers automatically attach cookies to requests, a forged form submission from <code>attacker.com</code> carries the victim's session cookie to <code>bank.com</code>. CSRF does not steal data — it performs actions on behalf of the victim without their knowledge or consent.</p>
 
-  <p>CSRF only works against endpoints that rely solely on cookie-based authentication without additional verification. Endpoints protected by custom headers, CSRF tokens, or the <code>SameSite</code> cookie attribute are protected. Modern browsers default to <code>SameSite=Lax</code> for cookies without an explicit SameSite attribute, which provides significant protection against CSRF.</p>
+<p>CSRF only works against endpoints that rely solely on cookie-based authentication without additional verification. Endpoints protected by custom headers, CSRF tokens, or the <code>SameSite</code> cookie attribute are protected. Modern browsers default to <code>SameSite=Lax</code> for cookies without an explicit SameSite attribute, which provides significant protection against CSRF.</p>
 
-  <div class="attack-box">
-    <div class="attack-label">Attack Example</div>
+<p style="font-size:13px; color:var(--text-dim);"><strong>See also:</strong> <a href="browser-security.html#cookies">browser cookie rules</a> for SameSite nuances and <a href="kubernetes-security.html#network-policies">Kubernetes network policies</a> if your APIs sit behind cluster ingress and need east-west CSRF exposure minimized.</p>
+
+<div class="attack-box">
+  <div class="attack-label">Attack Example</div>
     <pre>&lt;!-- attacker.com page — victim visits while logged into bank.com --&gt;
 &lt;form action="https://bank.com/transfer" method="POST" id="csrf"&gt;
   &lt;input name="amount" value="10000"&gt;
@@ -1376,5 +1420,37 @@ add_header Cross-Origin-Embedder-Policy "require-corp" always;</pre>
   headings.forEach(s => observer.observe(s));
 </script>
 
+<button class="back-to-top" id="back-to-top" title="Back to top">&#8593;</button>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('pre').forEach(pre=>{
+    if(pre.querySelector('code')||pre.closest('.diagram'))return;
+    const t=pre.textContent,s=t.trim();
+    if(/^\s*[\+\|]/.test(t)&&/\+--|\|.*[\+\|]/.test(t))return;
+    let l=null;
+    if(/"Version"\s*:\s*"2012-10-17"/.test(t)||/^\s*\{[\s\S]*?"[^"]+"\s*:/.test(t))l='json';
+    else if(/^(resource|data|variable|output|provider|module|terraform)\s/.test(s))l='hcl';
+    else if(/apiVersion:|kind:\s|metadata:\s|spec:\s/.test(t))l='yaml';
+    else if(/^(server|location|upstream)\s*\{|proxy_pass/.test(s))l='nginx';
+    else if(/^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER)\b/i.test(s))l='sql';
+    else if(/^(def |import |from .+ import|class .+:)/.test(s))l='python';
+    else if(/^(function |const |let |var |=>\s*\{|require\()/.test(s))l='javascript';
+    else if(/^(package |public class |import java\.)/.test(s))l='java';
+    else if(/^<\?php/.test(s))l='php';
+    else if(/^(gcloud |aws |kubectl |docker |terraform |curl |openssl |helm |git |pip |npm )/.test(s))l='bash';
+    else if(/^#[! ]/.test(s))l='bash';
+    if(l){const c=document.createElement('code');c.className='language-'+l;c.innerHTML=pre.innerHTML;pre.textContent='';pre.appendChild(c);}
+  });
+  if(typeof Prism!=='undefined')Prism.highlightAll();
+  document.querySelectorAll('pre').forEach(pre=>{
+    const btn=document.createElement('button');btn.className='copy-btn';btn.textContent='Copy';
+    btn.addEventListener('click',()=>{const code=pre.querySelector('code');navigator.clipboard.writeText((code||pre).textContent.trim());btn.textContent='Copied!';btn.classList.add('copied');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},2000);});
+    pre.appendChild(btn);
+  });
+  const btt=document.getElementById('back-to-top');
+  window.addEventListener('scroll',()=>btt.classList.toggle('visible',window.scrollY>500));
+  btt.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+});
+</script>
 </body>
 </html>

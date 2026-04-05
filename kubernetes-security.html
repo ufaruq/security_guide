@@ -1,0 +1,2752 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kubernetes Security Reference - Cluster Hardening & Workload Identity</title>
+<script>window.Prism=window.Prism||{};Prism.manual=true;</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" defer></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0a0e17;
+  --surface: #131925;
+  --surface2: #1a2233;
+  --border: #2a3444;
+  --accent: #00d4aa;
+  --accent2: #7c5cfc;
+  --accent3: #ff6b6b;
+  --accent4: #ffd93d;
+  --text: #e0e6ed;
+  --text-dim: #8892a4;
+  --text-bright: #ffffff;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); line-height: 1.7; overflow-x: hidden; }
+
+nav { position: fixed; top: 0; left: 0; width: 260px; height: 100vh; background: var(--surface); border-right: 1px solid var(--border); padding: 24px 0; overflow-y: auto; z-index: 100; }
+nav h2 { font-size: 14px; text-transform: uppercase; letter-spacing: 2px; color: var(--accent); padding: 0 20px; margin-bottom: 20px; }
+nav a { display: block; padding: 10px 20px; color: var(--text-dim); text-decoration: none; font-size: 14px; border-left: 3px solid transparent; transition: all 0.2s; }
+nav a:hover, nav a.active { color: var(--text-bright); background: rgba(0,212,170,0.05); border-left-color: var(--accent); }
+nav .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); padding: 16px 20px 6px; opacity: 0.6; }
+
+main { margin-left: 260px; max-width: 900px; padding: 40px 60px 100px; }
+h1 { font-size: 42px; font-weight: 800; background: linear-gradient(135deg, var(--accent), var(--accent2)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+.subtitle { font-size: 18px; color: var(--text-dim); margin-bottom: 48px; }
+h2 { font-size: 28px; font-weight: 700; color: var(--text-bright); margin-top: 64px; margin-bottom: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+h3 { font-size: 20px; font-weight: 600; color: var(--accent); margin-top: 32px; margin-bottom: 12px; }
+h4 { font-size: 16px; font-weight: 600; color: var(--accent2); margin-top: 24px; margin-bottom: 8px; }
+p { margin-bottom: 16px; }
+a { color: var(--accent); }
+code { background: var(--surface2); padding: 2px 7px; border-radius: 4px; font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 14px; color: var(--accent4); }
+pre { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 20px; overflow-x: auto; font-family: 'JetBrains Mono','Fira Code',monospace; font-size: 13px; line-height: 1.6; margin: 16px 0; color: var(--text); }
+
+.info-box { border-radius: 8px; padding: 16px 20px; margin: 16px 0; font-size: 14px; }
+.info-box.warning { background: rgba(255,107,107,0.1); border-left: 3px solid var(--accent3); }
+.info-box.note { background: rgba(0,212,170,0.08); border-left: 3px solid var(--accent); }
+.info-box.key { background: rgba(124,92,252,0.1); border-left: 3px solid var(--accent2); }
+.info-box strong { color: var(--text-bright); }
+
+table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+th { background: var(--surface2); padding: 12px 16px; text-align: left; font-weight: 600; color: var(--accent); border-bottom: 2px solid var(--border); }
+td { padding: 10px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:hover td { background: rgba(0,212,170,0.03); }
+
+ul, ol { margin: 0 0 16px 24px; }
+li { margin-bottom: 6px; }
+
+.defence-list { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+.defence-list h4 { margin-top: 0; color: var(--accent); }
+.defence-list li { font-size: 14px; }
+.defence-list li::marker { color: var(--accent); }
+
+.refs { background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 18px; margin: 20px 0 8px; font-size: 13px; }
+.refs-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 10px; }
+.refs-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 6px; }
+.refs-label { color: var(--text-dim); font-size: 12px; min-width: 60px; }
+.refs-row a { color: var(--accent); text-decoration: none; padding: 2px 8px; border: 1px solid rgba(0,212,170,0.25); border-radius: 4px; font-size: 12px; transition: all 0.15s; }
+.refs-row a:hover { background: rgba(0,212,170,0.1); }
+
+.attack-box { background: rgba(255,107,107,0.06); border: 1px solid rgba(255,107,107,0.2); border-radius: 8px; padding: 16px 20px; margin: 16px 0; }
+.attack-box .attack-label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent3); margin-bottom: 8px; font-weight: 600; }
+
+.diagram { background: rgba(124,92,252,0.08); border: 1px solid rgba(124,92,252,0.22); border-radius: 8px; margin: 16px 0; overflow: hidden; }
+.diagram-title { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--accent4); padding: 12px 18px; border-bottom: 1px solid rgba(124,92,252,0.18); background: rgba(124,92,252,0.06); font-weight: 700; }
+.diagram pre { margin: 0; border: 0; background: transparent; padding: 18px 20px; }
+
+.site-nav { padding: 10px 14px 14px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.site-nav-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-dim); margin-bottom: 8px; }
+.site-nav-card { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border: 1px solid; border-radius: 7px; text-decoration: none; font-size: 12px; margin-bottom: 6px; transition: all 0.15s; }
+.site-nav-card:hover { filter: brightness(1.2); }
+.site-nav-card.current { opacity: 0.4; pointer-events: none; }
+.site-nav-card .nav-icon { font-size: 16px; flex-shrink: 0; }
+.site-nav-card .nav-title { font-weight: 700; }
+.site-nav-card .nav-desc { font-size: 10px; opacity: 0.7; }
+.c-tls { background: rgba(0,212,170,0.08); border-color: rgba(0,212,170,0.25); color: #00d4aa; }
+.c-tls:hover { background: rgba(0,212,170,0.16); }
+.c-browser { background: rgba(124,92,252,0.08); border-color: rgba(124,92,252,0.25); color: #7c5cfc; }
+.c-browser:hover { background: rgba(124,92,252,0.16); }
+.c-webapp { background: rgba(255,107,107,0.08); border-color: rgba(255,107,107,0.25); color: #ff6b6b; }
+.c-webapp:hover { background: rgba(255,107,107,0.16); }
+.c-cloud { background: rgba(78,168,222,0.08); border-color: rgba(78,168,222,0.25); color: #4ea8de; }
+.c-cloud:hover { background: rgba(78,168,222,0.16); }
+.c-k8s { background: rgba(255,159,67,0.08); border-color: rgba(255,159,67,0.25); color: #ff9f43; }
+.c-k8s:hover { background: rgba(255,159,67,0.16); }
+.c-notes { background: rgba(255,217,61,0.08); border-color: rgba(255,217,61,0.25); color: #ffd93d; }
+.c-notes:hover { background: rgba(255,217,61,0.16); }
+.c-mindmap { background: rgba(224,108,159,0.08); border-color: rgba(224,108,159,0.25); color: #e06c9f; }
+.c-mindmap:hover { background: rgba(224,108,159,0.16); }
+
+@media print {
+  nav, .back-to-top, .copy-btn, .site-nav { display: none !important; }
+  main { margin-left: 0 !important; padding: 20px !important; max-width: 100% !important; }
+  body { background: #fff !important; color: #000 !important; }
+  h1 { -webkit-text-fill-color: #000 !important; background: none !important; }
+  h2, h3 { color: #000 !important; } h4 { color: #333 !important; }
+  pre, code { background: #f5f5f5 !important; color: #333 !important; border-color: #ddd !important; }
+  .info-box, .attack-box, .defence-list { background: #f9f9f9 !important; border-color: #999 !important; }
+  .refs { background: #f5f5f5 !important; border-color: #ddd !important; }
+  a { color: #000 !important; text-decoration: underline !important; }
+}
+pre { position: relative; }
+.copy-btn { position: absolute; top: 8px; right: 8px; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; color: var(--text-dim); font-size: 12px; padding: 4px 8px; cursor: pointer; opacity: 0; transition: opacity 0.2s; font-family: inherit; z-index: 2; }
+pre:hover .copy-btn { opacity: 1; }
+.copy-btn:hover { color: var(--accent); border-color: var(--accent); }
+.copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+.back-to-top { position: fixed; bottom: 24px; right: 24px; width: 40px; height: 40px; background: var(--surface); border: 1px solid var(--border); border-radius: 50%; color: var(--accent); font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0; pointer-events: none; transition: opacity 0.3s; z-index: 90; text-decoration: none; }
+.back-to-top.visible { opacity: 1; pointer-events: auto; }
+.back-to-top:hover { background: var(--surface2); border-color: var(--accent); }
+.token.comment,.token.prolog,.token.doctype,.token.cdata { color: #6a9955; font-style: italic; }
+.token.punctuation { color: var(--text-dim); }
+.token.property,.token.tag,.token.constant,.token.symbol,.token.deleted { color: var(--accent3); }
+.token.boolean,.token.number { color: var(--accent3); }
+.token.selector,.token.attr-name,.token.string,.token.char,.token.builtin,.token.inserted { color: var(--accent); }
+.token.operator,.token.entity,.token.url,.token.variable { color: var(--text); }
+.token.atrule,.token.attr-value,.token.function,.token.class-name { color: var(--accent4); }
+.token.keyword { color: var(--accent2); }
+.token.regex,.token.important { color: var(--accent4); }
+details { margin: 8px 0; }
+details > summary { cursor: pointer; list-style: none; padding: 4px 0; }
+details > summary::-webkit-details-marker { display: none; }
+details > summary::before { content: '▸ '; color: var(--accent); font-size: 14px; }
+details[open] > summary::before { content: '▾ '; }
+
+@media (max-width: 900px) { nav { display: none; } main { margin-left: 0; padding: 24px 20px; } h1 { font-size: 30px; } }
+</style>
+</head>
+<body>
+
+<nav>
+  <h2>Kubernetes Security</h2>
+
+  <div class="site-nav">
+    <div class="site-nav-label">Study Guide</div>
+    <a class="site-nav-card c-tls" href="tls-cryptographic-engineering-guide.html"><span class="nav-icon">📖</span><div><div class="nav-title">TLS &amp; Crypto Guide</div><div class="nav-desc">TLS, PKI, authentication &amp; signing</div></div></a>
+    <a class="site-nav-card c-browser" href="browser-security.html"><span class="nav-icon">🛡️</span><div><div class="nav-title">Browser Security</div><div class="nav-desc">SOP, CORS, CSP, cookies &amp; isolation</div></div></a>
+    <a class="site-nav-card c-webapp" href="web-app-security.html"><span class="nav-icon">🔓</span><div><div class="nav-title">Web App Security</div><div class="nav-desc">OWASP, injection, XSS &amp; more</div></div></a>
+    <a class="site-nav-card c-cloud" href="cloud-security.html"><span class="nav-icon">☁</span><div><div class="nav-title">Cloud Security</div><div class="nav-desc">AWS &amp; GCP security guide</div></div></a>
+    <a class="site-nav-card c-k8s current" href="kubernetes-security.html"><span class="nav-icon">☸️</span><div><div class="nav-title">Kubernetes Security</div><div class="nav-desc">Clusters, RBAC, network &amp; policy</div></div></a>
+    <a class="site-nav-card c-notes" href="crypto-study-notes.html"><span class="nav-icon">📝</span><div><div class="nav-title">Study Notes</div><div class="nav-desc">Active learning &amp; progress tracker</div></div></a>
+    <a class="site-nav-card c-mindmap" href="crypto-mind-map.html"><span class="nav-icon">🗺️</span><div><div class="nav-title">Mind Map</div><div class="nav-desc">Interactive concept map</div></div></a>
+  </div>
+
+  <div class="section-label">Foundations</div>
+  <a href="#threat-model">Threat Model</a>
+  <a href="#control-plane">Control Plane &amp; API</a>
+
+  <div class="section-label">Workloads &amp; Identity</div>
+  <a href="#workload-hardening">Workload Hardening</a>
+  <a href="#rbac">RBAC &amp; Service Accounts</a>
+  <a href="#secrets">Secrets &amp; Workload Identity</a>
+
+  <div class="section-label">Network &amp; Policy</div>
+  <a href="#network-policies">Network Policies</a>
+  <a href="#admission">Admission Control</a>
+  <a href="#supply-chain">Supply Chain &amp; Runtime</a>
+
+  <div class="section-label">Cloud Platforms</div>
+  <a href="#managed-k8s">GKE, EKS, AKS</a>
+  <a href="#deployment-models">Deployment Models</a>
+
+  <div class="section-label">Operations</div>
+  <a href="#attack-paths">Attack Paths</a>
+  <a href="#checklist">Hardening Checklist</a>
+</nav>
+
+<main>
+
+<h1 id="kubernetes-security">Kubernetes Security</h1>
+<p class="subtitle">Threat model, workload hardening, RBAC, network policy, workload identity, and managed Kubernetes differences</p>
+<p>Kubernetes security is less about one magic control and more about reducing blast radius in a fast-moving distributed system. Pods talk to an API server, kubelets run on every node, controllers continuously reconcile state, and cloud identities often sit just one metadata call away. If one workload gets popped, the question is whether the attacker stays trapped inside one namespace or turns that foothold into cluster-wide or cloud-wide access.</p>
+<p>This guide treats Kubernetes from the perspective of a defender and a pentester at the same time: what the important trust boundaries are, how attackers chain misconfigurations together, and what a modern hardening baseline looks like on upstream Kubernetes plus managed platforms like GKE, EKS, and AKS.</p>
+
+<div class="info-box note">
+  <strong>Example style note:</strong> Infrastructure examples on this page use Terraform where Terraform is the natural provisioning layer. Short <code>kubectl</code> examples that remain are operational checks or verification steps, not the primary provisioning pattern.
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 1: THREAT MODEL                                      -->
+<!-- ============================================================ -->
+
+<h2 id="threat-model">1. Threat Model &amp; Shared Responsibility</h2>
+
+<p>Kubernetes introduces several new high-value control points beyond "just containers": the API server, etcd, admission layer, kubelets, service account tokens, cluster DNS, the CNI plugin, and often the cloud identity bridge. In a managed cluster, the provider operates parts of the control plane, but you still own the workload security, namespace boundaries, RBAC, secrets, and east-west trust model.</p>
+
+<div class="info-box warning">
+  <strong>Managed Kubernetes is not "managed security".</strong> GKE, EKS, and AKS reduce some control-plane operational burden, but they do not remove your responsibility for pod security, RBAC, network policy, secrets handling, image integrity, or workload-to-cloud identity design.
+</div>
+
+<h3>Cluster Trust Boundaries</h3>
+
+<pre>
+Humans / CI
+   |
+   v
+Cloud IAM / IdP ------------------------------+
+   |                                          |
+   v                                          v
+Kubernetes API server ---> Admission ---> etcd (desired state, secrets)
+        ^                      |
+        |                      v
+ServiceAccount tokens <--- Pods / Deployments <--- kubelet on each node
+        |                      |
+        |                      +--> East-west traffic to other pods/services
+        |
+        +--> External cloud APIs via workload identity
+
+Compromise patterns:
+  Pod -> token -> API -> secret -> stronger SA -> node/cloud pivot
+  Pod -> privileged escape -> node -> kubelet creds -> cluster pivot
+  Pod -> no NetworkPolicy -> lateral movement -> database/internal API
+</pre>
+
+<h3>What You Usually Own</h3>
+
+<table>
+  <tr>
+    <th>Boundary</th>
+    <th>Why it matters</th>
+    <th>Main controls</th>
+  </tr>
+  <tr>
+    <td>API server access</td>
+    <td>The API is the cluster's root control plane. If you can create or mutate objects, you can often escalate.</td>
+    <td>Private endpoints, strong auth, audit logs, least-privilege RBAC</td>
+  </tr>
+  <tr>
+    <td>Service accounts</td>
+    <td>Pods authenticate as service accounts. Poorly scoped accounts become reusable bearer credentials.</td>
+    <td>Dedicated service accounts, short-lived tokens, <code>automountServiceAccountToken: false</code> by default</td>
+  </tr>
+  <tr>
+    <td>Workloads</td>
+    <td>Pods are the attacker foothold most teams actually lose first.</td>
+    <td>Restricted pod security, non-root, no privilege escalation, read-only filesystems</td>
+  </tr>
+  <tr>
+    <td>Network</td>
+    <td>Kubernetes is flat by default. Without segmentation, compromise spreads laterally.</td>
+    <td>Default-deny <code>NetworkPolicy</code>, DNS exceptions, explicit ingress/egress allows</td>
+  </tr>
+  <tr>
+    <td>Secrets</td>
+    <td>Secrets often contain cloud creds, API keys, database passwords, or service account tokens.</td>
+    <td>Encryption at rest, strict RBAC, external stores, fast rotation</td>
+  </tr>
+  <tr>
+    <td>Cloud bridge</td>
+    <td>Cluster compromise often becomes cloud compromise through node roles or workload identity.</td>
+    <td>Workload identity, minimal cloud roles, node metadata hardening</td>
+  </tr>
+</table>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">Official</span>
+    <a href="https://kubernetes.io/docs/concepts/security/">Kubernetes security concepts</a>
+    <a href="https://kubernetes.io/docs/reference/access-authn-authz/">API access control</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 2: CONTROL PLANE                                     -->
+<!-- ============================================================ -->
+
+<h2 id="control-plane">2. Control Plane &amp; API Security</h2>
+
+<p>The API server is the most important object in the cluster. It mediates create, update, delete, authentication, authorization, admission, and persistence into etcd. If an attacker can meaningfully interact with the API, they can usually either escalate directly or create a pod that does it for them.</p>
+
+<h3>Control Plane Priorities</h3>
+
+<ul>
+  <li>Restrict who can reach the API server, especially on managed clusters where public endpoints are often the default starting point.</li>
+  <li>Use strong external identity and MFA for human admins. Avoid long-lived kubeconfigs shared between people.</li>
+  <li>Turn on audit logging and keep it somewhere attackers in the cluster cannot tamper with.</li>
+  <li>Encrypt sensitive data in etcd, especially Secrets.</li>
+  <li>Keep cluster versions current. Control-plane CVEs are less forgiving than app bugs.</li>
+  <li>Be deliberate about kubelet and node access. Node access is frequently equivalent to "I can become the cluster."</li>
+</ul>
+
+<h3>Audit What Matters</h3>
+
+<p>Audit logs answer the questions you need during incident response: who created the pod, who changed the role binding, who read the secret, and what service account the pod used. On self-managed Kubernetes, you configure audit policy on <code>kube-apiserver</code>. On managed platforms, you usually enable provider-native control-plane log export.</p>
+
+<div class="diagram">
+  <div class="diagram-title">Example Flow - API Access, Authorization, and Audit</div>
+  <pre>
+Engineer / CI principal
+        |
+        v
+   kubectl request ------------------------------+
+        |                                        |
+        v                                        v
+  API server ---> authn/authz ---> admission ---> persisted object
+        |
+        +--> audit log backend records:
+             who asked, what resource, which verb, which namespace
+
+"kubectl auth can-i" is the quick preflight check that asks:
+  "If this identity tried the request right now, would the API allow it?"
+  </pre>
+</div>
+
+<h3>Commented Example: Terraform Audit Policy File</h3>
+
+<pre>
+# Terraform: for self-managed control planes, treat the audit policy file as
+# infrastructure too. Bootstrap tooling then mounts this file into
+# kube-apiserver with the appropriate audit flags.
+resource "local_file" "kube_apiserver_audit_policy" {
+  filename = "${path.module}/audit-policy.yaml"
+  content = yamlencode({
+    apiVersion = "audit.k8s.io/v1"
+    kind       = "Policy"
+    rules = [
+      {
+        # Metadata logs the actor, verb, resource, and target object without
+        # recording full request and response bodies.
+        level = "Metadata"
+      }
+    ]
+  })
+}
+</pre>
+
+<h3>Commented Example: kubectl Authorization Check</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Verification Flow - Can This Service Account Read Secrets?</div>
+  <pre>
+payments/checkouts service account
+           |
+           v
+ kubectl auth can-i get secrets -n payments
+           |
+           +--> "yes" means the identity can read secrets now
+           +--> "no" means the API would block the request
+
+This is one of the fastest ways to validate RBAC assumptions before
+or after applying Terraform.
+  </pre>
+</div>
+
+<pre>
+# Before granting access, ask the cluster what a user or service account can do.
+# This catches a surprising number of accidental over-permissions.
+kubectl auth can-i --list --as=system:serviceaccount:payments:checkout
+kubectl auth can-i get secrets -n payments \
+  --as=system:serviceaccount:payments:checkout
+</pre>
+
+<div class="attack-box">
+  <div class="attack-label">Common Mistakes</div>
+  <ul>
+    <li>Leaving the API server broadly reachable from the internet with only "we trust IAM" as the control.</li>
+    <li>Disabling or never enabling audit logs, which leaves no timeline during investigation.</li>
+    <li>Treating node access as "just infrastructure access" even though node compromise often leads to service account theft and pod exec.</li>
+    <li>For self-managed clusters, skipping admission plugins or encryption-at-rest because the cluster appears to work without them.</li>
+  </ul>
+</div>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">Official</span>
+    <a href="https://kubernetes.io/docs/tasks/debug/debug-cluster/audit/">Kubernetes auditing</a>
+    <a href="https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/">Admission controllers</a>
+    <a href="https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/">Encrypt data at rest</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 3: WORKLOAD HARDENING                                -->
+<!-- ============================================================ -->
+
+<h2 id="workload-hardening">3. Workload Hardening</h2>
+
+<p>Pods are the part of Kubernetes that attackers are most likely to touch first. A vulnerable app, a leaked credential, or a malicious dependency lands inside a container. Workload hardening is about making that first foothold low-value: hard to escape, hard to abuse, and hard to use for privilege escalation.</p>
+
+<h3>Secure Pod Baseline</h3>
+
+<table>
+  <tr>
+    <th>Risky default</th>
+    <th>Better baseline</th>
+    <th>Why</th>
+  </tr>
+  <tr>
+    <td>Run as root</td>
+    <td><code>runAsNonRoot: true</code></td>
+    <td>Reduces the blast radius of app compromise and blocks many lazy post-exploitation steps.</td>
+  </tr>
+  <tr>
+    <td>Writable root filesystem</td>
+    <td><code>readOnlyRootFilesystem: true</code></td>
+    <td>Makes persistence and tool dropper behavior harder.</td>
+  </tr>
+  <tr>
+    <td>Default Linux capabilities</td>
+    <td><code>capabilities.drop: ["ALL"]</code></td>
+    <td>Shrinks the kernel attack surface.</td>
+  </tr>
+  <tr>
+    <td>Privilege escalation allowed</td>
+    <td><code>allowPrivilegeEscalation: false</code></td>
+    <td>Stops common escalation chains even after code execution.</td>
+  </tr>
+  <tr>
+    <td>No seccomp profile</td>
+    <td><code>seccompProfile: RuntimeDefault</code></td>
+    <td>Blocks many unnecessary syscalls by default.</td>
+  </tr>
+  <tr>
+    <td>Host namespace access</td>
+    <td>Avoid <code>hostNetwork</code>, <code>hostPID</code>, <code>hostIPC</code>, <code>hostPath</code></td>
+    <td>These pierce container isolation and frequently turn app compromise into node compromise.</td>
+  </tr>
+</table>
+
+<h3>Commented Example: Terraform Deployment with Restricted Pod Settings</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Restricted Pod Stack</div>
+  <pre>
+Container process
+    |
+    +--> runs as non-root user
+    +--> cannot escalate privileges
+    +--> has all Linux capabilities dropped
+    +--> writes blocked by read-only root filesystem
+    +--> seccomp RuntimeDefault narrows syscall surface
+    |
+    v
+Pod boundary stays much harder to abuse after app compromise
+  </pre>
+</div>
+
+<pre>
+# Terraform: manage the Deployment as Kubernetes infrastructure.
+# The underlying manifest is the same idea as YAML, but Terraform now owns it.
+resource "kubernetes_manifest" "payments_api" {
+  manifest = {
+    apiVersion = "apps/v1"
+    kind       = "Deployment"
+    metadata = {
+      name      = "payments-api"
+      namespace = "payments"
+    }
+    spec = {
+      replicas = 2
+      selector = {
+        matchLabels = {
+          app = "payments-api"
+        }
+      }
+      template = {
+        metadata = {
+          labels = {
+            app = "payments-api"
+          }
+        }
+        spec = {
+          # Use a dedicated service account rather than "default".
+          serviceAccountName            = "payments-api"
+          # Do not mount API credentials unless the app actually needs them.
+          automountServiceAccountToken  = false
+          securityContext = {
+            seccompProfile = {
+              # Let the runtime apply its maintained syscall filter.
+              type = "RuntimeDefault"
+            }
+          }
+          containers = [
+            {
+              name  = "app"
+              # Pin the image by digest so reviewers know exactly what will run.
+              image = "ghcr.io/acme/payments-api@sha256:1111111111111111111111111111111111111111111111111111111111111111"
+              ports = [
+                {
+                  containerPort = 8080
+                }
+              ]
+              securityContext = {
+                runAsNonRoot             = true
+                runAsUser                = 10001
+                allowPrivilegeEscalation = false
+                readOnlyRootFilesystem   = true
+                capabilities = {
+                  # Start from zero capabilities and add back only if justified.
+                  drop = ["ALL"]
+                }
+              }
+              resources = {
+                requests = {
+                  cpu    = "100m"
+                  memory = "128Mi"
+                }
+                limits = {
+                  cpu    = "500m"
+                  memory = "512Mi"
+                }
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+</pre>
+
+<div class="info-box note">
+  <strong>Pod Security Admission is the built-in way to enforce this class of controls.</strong> PodSecurityPolicy was removed in Kubernetes <code>v1.25</code>. Today the native baseline is Pod Security Admission plus optional policy layers like Kyverno, Gatekeeper, or built-in ValidatingAdmissionPolicy.
+</div>
+
+<h3>Commented Example: Terraform Namespace Quota and Limit Range</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Tenant Containment - ResourceQuota and LimitRange</div>
+  <pre>
+Application namespace
+      |
+      +--> ResourceQuota caps total CPU / memory / pod count
+      +--> LimitRange sets sane defaults and max/min per container
+      |
+      v
+Noisy or compromised workloads have a harder time exhausting the cluster
+or hiding behind "unbounded" resource requests.
+  </pre>
+</div>
+
+<pre>
+# Terraform: quotas are mostly an availability control, but they also reduce
+# blast radius during abuse, runaway jobs, and crypto-mining style incidents.
+resource "kubernetes_manifest" "payments_resource_quota" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "ResourceQuota"
+    metadata = {
+      name      = "payments-quota"
+      namespace = "payments"
+    }
+    spec = {
+      hard = {
+        "limits.cpu"      = "8"
+        "limits.memory"   = "16Gi"
+        "requests.cpu"    = "4"
+        "requests.memory" = "8Gi"
+        "pods"            = "40"
+      }
+    }
+  }
+}
+
+resource "kubernetes_manifest" "payments_limit_range" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "LimitRange"
+    metadata = {
+      name      = "payments-limits"
+      namespace = "payments"
+    }
+    spec = {
+      limits = [
+        {
+          type = "Container"
+          default = {
+            cpu    = "500m"
+            memory = "512Mi"
+          }
+          defaultRequest = {
+            cpu    = "100m"
+            memory = "128Mi"
+          }
+        }
+      ]
+    }
+  }
+}
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">Official</span>
+    <a href="https://kubernetes.io/docs/concepts/security/pod-security-admission/">Pod Security Admission</a>
+    <a href="https://kubernetes.io/docs/concepts/security/pod-security-standards/">Pod Security Standards</a>
+    <a href="https://kubernetes.io/docs/concepts/policy/pod-security-policy/">PodSecurityPolicy removal</a>
+    <a href="https://kubernetes.io/docs/concepts/policy/resource-quotas/">Resource quotas</a>
+    <a href="https://kubernetes.io/docs/concepts/policy/limit-range/">Limit ranges</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 4: RBAC                                              -->
+<!-- ============================================================ -->
+
+<h2 id="rbac">4. RBAC &amp; Service Accounts</h2>
+
+<p>RBAC is where many Kubernetes incidents actually become serious. Overly broad permissions do not just mean "a little too much admin access"; they often mean "this principal can mint a pod, mount secrets, impersonate a stronger account, or create a token for another identity."</p>
+
+<h3>High-Risk Permissions</h3>
+
+<table>
+  <tr>
+    <th>Permission or pattern</th>
+    <th>Why it is dangerous</th>
+  </tr>
+  <tr>
+    <td><code>list</code> or <code>watch</code> on <code>secrets</code></td>
+    <td>Effectively exposes secret contents, not just metadata.</td>
+  </tr>
+  <tr>
+    <td>Ability to create pods or deployments</td>
+    <td>Implicitly grants access to mounted Secrets, ConfigMaps, volumes, and any service account in that namespace.</td>
+  </tr>
+  <tr>
+    <td><code>bind</code>, <code>escalate</code>, or <code>impersonate</code></td>
+    <td>These can convert ordinary access into administrative access very quickly.</td>
+  </tr>
+  <tr>
+    <td><code>create</code> on <code>serviceaccounts/token</code></td>
+    <td>Lets callers mint credentials for service accounts.</td>
+  </tr>
+  <tr>
+    <td>Broad <code>ClusterRoleBinding</code> use</td>
+    <td>Turns namespace-scoped access mistakes into cluster-wide mistakes.</td>
+  </tr>
+</table>
+
+<h3>Commented Example: Terraform Least-Privilege RBAC</h3>
+
+<div class="diagram">
+  <div class="diagram-title">RBAC Permission Chain</div>
+  <pre>
+Pod
+ |
+ v
+ServiceAccount "report-reader"
+ |
+ v
+RoleBinding "lease-reader-binding"
+ |
+ v
+Role "lease-reader"
+ |
+ v
+Only get/list/watch on coordination.k8s.io leases in payments namespace
+  </pre>
+</div>
+
+<pre>
+# Terraform: give one service account one small role in one namespace.
+resource "kubernetes_manifest" "report_reader_sa" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "ServiceAccount"
+    metadata = {
+      name      = "report-reader"
+      namespace = "payments"
+    }
+    # Default off. A pod has to opt in to mounting the token.
+    automountServiceAccountToken = false
+  }
+}
+
+resource "kubernetes_manifest" "lease_reader_role" {
+  manifest = {
+    apiVersion = "rbac.authorization.k8s.io/v1"
+    kind       = "Role"
+    metadata = {
+      name      = "lease-reader"
+      namespace = "payments"
+    }
+    rules = [
+      {
+        # This rule grants read-only lease access and nothing else.
+        apiGroups = ["coordination.k8s.io"]
+        resources = ["leases"]
+        verbs     = ["get", "list", "watch"]
+      }
+    ]
+  }
+}
+
+resource "kubernetes_manifest" "lease_reader_binding" {
+  manifest = {
+    apiVersion = "rbac.authorization.k8s.io/v1"
+    kind       = "RoleBinding"
+    metadata = {
+      name      = "lease-reader-binding"
+      namespace = "payments"
+    }
+    subjects = [
+      {
+        kind      = "ServiceAccount"
+        name      = "report-reader"
+        namespace = "payments"
+      }
+    ]
+    roleRef = {
+      # Bind the exact Role above instead of a broad ClusterRole.
+      apiGroup = "rbac.authorization.k8s.io"
+      kind     = "Role"
+      name     = "lease-reader"
+    }
+  }
+}
+</pre>
+
+<div class="defence-list">
+  <h4>RBAC Design Rules</h4>
+  <ul>
+    <li>Prefer <code>RoleBinding</code> over <code>ClusterRoleBinding</code> whenever possible.</li>
+    <li>Give each workload its own service account. Do not reuse one high-privilege service account across unrelated apps.</li>
+    <li>Disable service account token auto-mounting unless the pod really needs Kubernetes API access.</li>
+    <li>Review who can create workloads, create tokens, bind roles, and read secrets. Those are the permissions that usually matter most.</li>
+  </ul>
+</div>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">Official</span>
+    <a href="https://kubernetes.io/docs/concepts/security/rbac-good-practices/">RBAC good practices</a>
+    <a href="https://kubernetes.io/docs/concepts/security/service-accounts/">Service accounts</a>
+    <a href="https://kubernetes.io/docs/reference/access-authn-authz/service-accounts-admin/">Managing service accounts</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 5: SECRETS                                           -->
+<!-- ============================================================ -->
+
+<h2 id="secrets">5. Secrets, Encryption &amp; Workload Identity</h2>
+
+<p>Many "Kubernetes" breaches are really secret-management breaches wearing a Kubernetes hat. If a pod can read a database password, a cloud access token, or a highly privileged service account token, the attacker rarely cares whether they got there via a container exploit or a sloppy Helm chart.</p>
+
+<div class="info-box warning">
+  <strong>Base64 is not encryption.</strong> Kubernetes Secrets are encoded, not protected, unless you configure encryption at rest for the API server and etcd. The upstream secrets guidance explicitly warns that Secrets are stored unencrypted by default.
+</div>
+
+<h3>What Good Secret Design Looks Like</h3>
+
+<ul>
+  <li>Encrypt Secret data at rest.</li>
+  <li>Minimize who can <code>get</code>, <code>list</code>, or <code>watch</code> Secrets.</li>
+  <li>Prefer short-lived credentials and identity federation over static API keys.</li>
+  <li>Mount only the secret a container needs; do not spray all secrets into environment variables.</li>
+  <li>Use external secret stores for high-value credentials when possible.</li>
+</ul>
+
+<h3>Commented Example: Terraform Pod with Projected Service Account Token</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Projected Token Flow</div>
+  <pre>
+Kubernetes ServiceAccount
+          |
+          v
+ short-lived projected JWT
+          |
+          v
+ mounted as a file inside the pod
+          |
+          +--> Kubernetes API auth
+          +--> cloud workload identity exchange
+
+Better than handing every pod a long-lived default token automatically
+  </pre>
+</div>
+
+<pre>
+# Terraform: mount a projected service account token only where the workload
+# explicitly needs it, instead of accepting the default token mount.
+resource "kubernetes_manifest" "token_consumer" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "Pod"
+    metadata = {
+      name      = "token-consumer"
+      namespace = "payments"
+    }
+    spec = {
+      serviceAccountName           = "report-reader"
+      automountServiceAccountToken = false
+      containers = [
+        {
+          name    = "app"
+          image   = "busybox:1.36"
+          command = ["sleep", "3600"]
+          volumeMounts = [
+            {
+              # Mount the token in an explicit path the app knows to read.
+              name      = "k8s-token"
+              mountPath = "/var/run/secrets/custom"
+              readOnly  = true
+            }
+          ]
+        }
+      ]
+      volumes = [
+        {
+          name = "k8s-token"
+          projected = {
+            sources = [
+              {
+                serviceAccountToken = {
+                  # Kubernetes writes the projected token at this file path.
+                  path              = "token"
+                  # Audience should match the service that will validate the token.
+                  audience          = "kubernetes.default.svc"
+                  # Rotate the token frequently instead of relying on a long-lived secret.
+                  expirationSeconds = 3600
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
+</pre>
+
+<h3>Workload Identity Beats Static Cloud Keys</h3>
+
+<table>
+  <tr>
+    <th>Platform</th>
+    <th>Preferred pattern</th>
+    <th>Why it is better</th>
+  </tr>
+  <tr>
+    <td>GKE</td>
+    <td>Workload Identity Federation for GKE</td>
+    <td>Google recommends it in most cases, and it replaces older metadata concealment patterns.</td>
+  </tr>
+  <tr>
+    <td>EKS</td>
+    <td>EKS Pod Identity or IRSA</td>
+    <td>Maps service accounts to IAM roles instead of reusing node instance credentials.</td>
+  </tr>
+  <tr>
+    <td>AKS</td>
+    <td>Microsoft Entra Workload ID</td>
+    <td>Uses projected service account tokens and OIDC federation instead of static client secrets.</td>
+  </tr>
+</table>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">Kubernetes</span>
+    <a href="https://kubernetes.io/docs/concepts/security/secrets-good-practices/">Secrets good practices</a>
+    <a href="https://kubernetes.io/docs/tasks/administer-cluster/encrypt-data/">Encrypt data at rest</a>
+    <a href="https://kubernetes.io/docs/concepts/storage/projected-volumes/">Projected service account tokens</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">Cloud</span>
+    <a href="https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity">GKE Workload Identity Federation</a>
+    <a href="https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html">EKS Pod Identity</a>
+    <a href="https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview">AKS Workload ID</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 6: NETWORK POLICY                                    -->
+<!-- ============================================================ -->
+
+<h2 id="network-policies">6. Network Policies &amp; East-West Traffic</h2>
+
+<p>Kubernetes networking starts from a dangerous place: a flat, highly connected environment where pods can usually talk to one another freely. That is convenient for demos and bad for real security. A compromised pod should not be able to probe every internal service, database, metrics endpoint, and admin API by default.</p>
+
+<div class="info-box note">
+  <strong>A NetworkPolicy object by itself does nothing unless your network plugin enforces it.</strong> Upstream Kubernetes explicitly notes that creating a <code>NetworkPolicy</code> resource without a controller that implements it has no effect.
+</div>
+
+<h3>Commented Example: Terraform Network Policies</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Default Deny with Explicit Application Paths</div>
+  <pre>
+frontend pod  ---- TCP/8080 ----> backend pod ---- TCP/5432 ----> db pod
+    |                                  |
+    |                                  +--> other destinations denied
+    +--> everything else denied
+
+Default deny defines the floor.
+Small allow rules define the only legal traffic paths.
+  </pre>
+</div>
+
+<pre>
+# Terraform: use separate resources so policy intent stays obvious in plan
+# output instead of hiding everything in one giant manifest blob.
+resource "kubernetes_manifest" "default_deny_all" {
+  manifest = {
+    apiVersion = "networking.k8s.io/v1"
+    kind       = "NetworkPolicy"
+    metadata = {
+      name      = "default-deny-all"
+      namespace = "payments"
+    }
+    spec = {
+      # Empty selector means "all pods in this namespace".
+      podSelector = {}
+      # Deny both directions until another policy explicitly allows them.
+      policyTypes = ["Ingress", "Egress"]
+    }
+  }
+}
+
+resource "kubernetes_manifest" "allow_frontend_to_backend" {
+  manifest = {
+    apiVersion = "networking.k8s.io/v1"
+    kind       = "NetworkPolicy"
+    metadata = {
+      name      = "allow-frontend-to-backend"
+      namespace = "payments"
+    }
+    spec = {
+      podSelector = {
+        matchLabels = {
+          app = "backend"
+        }
+      }
+      policyTypes = ["Ingress"]
+      ingress = [
+        {
+          # Only frontend-labeled pods may initiate this path.
+          from = [
+            {
+              podSelector = {
+                matchLabels = {
+                  app = "frontend"
+                }
+              }
+            }
+          ]
+          ports = [
+            {
+              protocol = "TCP"
+              port     = 8080
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+
+resource "kubernetes_manifest" "allow_backend_to_db" {
+  manifest = {
+    apiVersion = "networking.k8s.io/v1"
+    kind       = "NetworkPolicy"
+    metadata = {
+      name      = "allow-backend-to-db"
+      namespace = "payments"
+    }
+    spec = {
+      podSelector = {
+        matchLabels = {
+          app = "backend"
+        }
+      }
+      policyTypes = ["Egress"]
+      egress = [
+        {
+          # Backend may reach only db-labeled pods on PostgreSQL.
+          to = [
+            {
+              podSelector = {
+                matchLabels = {
+                  app = "db"
+                }
+              }
+            }
+          ]
+          ports = [
+            {
+              protocol = "TCP"
+              port     = 5432
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+</pre>
+
+<h3>Commented Example: Terraform DNS Egress Exception</h3>
+
+<div class="diagram">
+  <div class="diagram-title">DNS Exception under Default Deny</div>
+  <pre>
+application pods
+      |
+      +--> UDP/TCP 53 allowed to kube-system DNS
+      |
+      +--> all other egress still blocked until separately allowed
+
+Without a DNS exception, many "secure" namespaces simply fail to resolve names.
+  </pre>
+</div>
+
+<pre>
+# Terraform: add a narrow DNS exception after default-deny egress.
+# The kube-dns / CoreDNS labels vary by distribution, so teams often match the
+# kube-system namespace first and then refine the pod label in their own cluster.
+resource "kubernetes_manifest" "allow_dns_egress" {
+  manifest = {
+    apiVersion = "networking.k8s.io/v1"
+    kind       = "NetworkPolicy"
+    metadata = {
+      name      = "allow-dns-egress"
+      namespace = "payments"
+    }
+    spec = {
+      podSelector = {}
+      policyTypes = ["Egress"]
+      egress = [
+        {
+          to = [
+            {
+              namespaceSelector = {
+                matchLabels = {
+                  "kubernetes.io/metadata.name" = "kube-system"
+                }
+              }
+            }
+          ]
+          ports = [
+            {
+              protocol = "UDP"
+              port     = 53
+            },
+            {
+              protocol = "TCP"
+              port     = 53
+            }
+          ]
+        }
+      ]
+    }
+  }
+}
+</pre>
+
+<h3>What NetworkPolicy Does Not Solve</h3>
+
+<ul>
+  <li>It does not replace workload identity or RBAC.</li>
+  <li>It is mainly L3/L4 control; it does not understand business authorization or most HTTP semantics.</li>
+  <li>It does not magically secure <code>hostNetwork</code> pods.</li>
+  <li>It does not secure traffic to cloud APIs unless you define egress policy for those paths too.</li>
+</ul>
+
+<div class="defence-list">
+  <h4>Practical Network Segmentation Rules</h4>
+  <ul>
+    <li>Start every application namespace from deny-all.</li>
+    <li>Add explicit DNS egress allows so workloads can still resolve names.</li>
+    <li>Separate internet egress from east-west policy review; teams often remember one and forget the other.</li>
+    <li>Treat observability, service mesh, and ingress controllers as infrastructure dependencies that need their own documented exceptions.</li>
+  </ul>
+</div>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">Kubernetes</span>
+    <a href="https://kubernetes.io/docs/tasks/administer-cluster/declare-network-policy/">Declare NetworkPolicy</a>
+    <a href="https://kubernetes.io/docs/concepts/services-networking/network-policies/">NetworkPolicy concept</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">AKS</span>
+    <a href="https://learn.microsoft.com/en-us/azure/aks/network-policy-best-practices">AKS network policy best practices</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 7: ADMISSION                                         -->
+<!-- ============================================================ -->
+
+<h2 id="admission">7. Admission Control &amp; Policy Enforcement</h2>
+
+<p>RBAC decides who is allowed to submit a request. Admission decides whether the object itself is acceptable. This is where you block dangerous pod specs, reject mutable image tags, require labels, and enforce org-wide safety rules before the object ever lands in etcd.</p>
+
+<h3>Policy Layers</h3>
+
+<ul>
+  <li><strong>Pod Security Admission:</strong> built-in, namespace-scoped enforcement of <code>privileged</code>, <code>baseline</code>, and <code>restricted</code> pod security standards.</li>
+  <li><strong>ValidatingAdmissionPolicy:</strong> built-in CEL-based validation for richer custom rules.</li>
+  <li><strong>Webhooks / policy engines:</strong> Kyverno, Gatekeeper, and cloud policy integrations for broader ecosystems and library-style policies.</li>
+</ul>
+
+<h3>Commented Example: Terraform Namespace Labels for Pod Security Admission</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Pod Security Admission Namespace Flow</div>
+  <pre>
+Pod create request
+      |
+      v
+Namespace labels:
+  enforce = restricted
+  warn    = restricted
+  audit   = restricted
+      |
+      +--> unsafe pod denied
+      +--> borderline pod warned/audited
+      +--> compliant pod admitted
+  </pre>
+</div>
+
+<pre>
+# Terraform-managed namespaces are the cleanest place to enforce Pod Security
+# Admission, because the labels are born with the namespace.
+resource "kubernetes_manifest" "payments_namespace" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "Namespace"
+    metadata = {
+      name = "payments"
+      labels = {
+        "pod-security.kubernetes.io/enforce" = "restricted"
+        "pod-security.kubernetes.io/audit"   = "restricted"
+        "pod-security.kubernetes.io/warn"    = "restricted"
+      }
+    }
+  }
+}
+</pre>
+
+<h3>Commented Example: Terraform ValidatingAdmissionPolicy</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Validating Admission Policy Decision Path</div>
+  <pre>
+Deployment create / update
+         |
+         v
+ValidatingAdmissionPolicy
+         |
+         +--> image ends with ":latest" ? deny
+         +--> immutable tag or digest ? allow
+
+Admission moves this check from review culture into enforcement.
+  </pre>
+</div>
+
+<pre>
+# Terraform: manage built-in admission resources with kubernetes_manifest.
+resource "kubernetes_manifest" "disallow_latest_image_tag" {
+  manifest = {
+    apiVersion = "admissionregistration.k8s.io/v1"
+    kind       = "ValidatingAdmissionPolicy"
+    metadata = {
+      name = "disallow-latest-image-tag"
+    }
+    spec = {
+      failurePolicy = "Fail"
+      matchConstraints = {
+        resourceRules = [
+          {
+            apiGroups   = ["apps"]
+            apiVersions = ["v1"]
+            operations  = ["CREATE", "UPDATE"]
+            resources   = ["deployments"]
+          }
+        ]
+      }
+      validations = [
+        {
+          # CEL evaluates every container in the pod template.
+          expression = "object.spec.template.spec.containers.all(c, !c.image.endsWith(':latest'))"
+          message    = "Pin images by digest or an immutable tag instead of latest."
+        }
+      ]
+    }
+  }
+}
+
+resource "kubernetes_manifest" "disallow_latest_image_tag_binding" {
+  manifest = {
+    apiVersion = "admissionregistration.k8s.io/v1"
+    kind       = "ValidatingAdmissionPolicyBinding"
+    metadata = {
+      name = "disallow-latest-image-tag-binding"
+    }
+    spec = {
+      policyName        = "disallow-latest-image-tag"
+      validationActions = ["Deny"]
+    }
+  }
+}
+</pre>
+
+<div class="info-box key">
+  <strong>Important limitation:</strong> admission control cannot protect reads. If a principal can already <code>get</code>, <code>list</code>, or <code>watch</code> a sensitive object, admission is no longer the relevant control. That is an RBAC and secret-access problem.
+</div>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">Official</span>
+    <a href="https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/">Admission controllers</a>
+    <a href="https://kubernetes.io/docs/reference/access-authn-authz/validating-admission-policy">ValidatingAdmissionPolicy</a>
+    <a href="https://kubernetes.io/docs/concepts/security/pod-security-admission/">Pod Security Admission</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 8: SUPPLY CHAIN                                      -->
+<!-- ============================================================ -->
+
+<h2 id="supply-chain">8. Supply Chain &amp; Runtime Security</h2>
+
+<p>Many clusters are hardened on paper and still deploy vulnerable or untrusted images. Kubernetes security starts before the pod runs: image build provenance, registry controls, vulnerability scanning, immutable references, and policy that prevents "just push it, we will fix it later" from becoming production reality.</p>
+
+<h3>Supply Chain Rules</h3>
+
+<ul>
+  <li>Scan images before deploy and block critical issues when policy requires it.</li>
+  <li>Pin production images by digest, not mutable tags.</li>
+  <li>Use private registries and narrow pull credentials.</li>
+  <li>Prefer signed and attested images for higher-trust workloads.</li>
+  <li>Enable <code>AlwaysPullImages</code> in multi-tenant environments where cache reuse can weaken registry authorization assumptions.</li>
+</ul>
+
+<h3>Runtime Rules</h3>
+
+<ul>
+  <li>Patch nodes and container runtimes aggressively.</li>
+  <li>Watch for unusual <code>exec</code>, <code>port-forward</code>, crypto-mining, and outbound beaconing behavior.</li>
+  <li>Treat privileged pods, host mounts, and host namespaces as runtime exceptions that need explicit review.</li>
+  <li>Protect kubelet access and node credentials, because node compromise often outranks pod compromise in severity.</li>
+</ul>
+
+<pre>
+# Good image hygiene: use an immutable digest so admission and deploy tools
+# can reason about exactly what is running.
+containers:
+  - name: api
+    image: ghcr.io/acme/orders-api@sha256:2222222222222222222222222222222222222222222222222222222222222222
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">Official</span>
+    <a href="https://kubernetes.io/docs/reference/access-authn-authz/admission-controllers/">AlwaysPullImages admission controller</a>
+    <a href="https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-security">GKE Autopilot security measures</a>
+    <a href="https://docs.cloud.google.com/binary-authorization/docs/overview">Binary Authorization</a>
+    <a href="https://docs.aws.amazon.com/eks/latest/best-practices/security.html">EKS security best practices</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 9: MANAGED K8S                                       -->
+<!-- ============================================================ -->
+
+<h2 id="managed-k8s">9. Managed Kubernetes: GKE, EKS, and AKS</h2>
+
+<p>The right Kubernetes hardening baseline is similar across clouds, but the details are not. Identity, API endpoint exposure, control-plane logging, and policy integrations all vary by provider.</p>
+
+<div class="info-box note">
+  <strong>Provider snapshot:</strong> The guidance in this section reflects current upstream and provider documentation as of <strong>April 3, 2026</strong>.
+</div>
+
+<table>
+  <tr>
+    <th>Area</th>
+    <th>GKE</th>
+    <th>EKS</th>
+    <th>AKS</th>
+  </tr>
+  <tr>
+    <td>Workload identity</td>
+    <td>Workload Identity Federation for GKE is the recommended path.</td>
+    <td>EKS Pod Identity is the modern AWS-native path; IRSA still exists.</td>
+    <td>Microsoft Entra Workload ID is the preferred identity federation model.</td>
+  </tr>
+  <tr>
+    <td>API endpoint posture</td>
+    <td>Private and restricted control-plane connectivity options are available; Autopilot bakes in stronger defaults.</td>
+    <td>Cluster endpoint is public by default; private access should be evaluated early.</td>
+    <td>Private clusters use Private Link so API traffic stays on private networking.</td>
+  </tr>
+  <tr>
+    <td>Policy guardrails</td>
+    <td>Pod security plus Binary Authorization and GKE-specific guardrails.</td>
+    <td>Pod security plus admission/webhook tooling, often with OPA/Kyverno and registry controls.</td>
+    <td>Azure Policy integrates directly with AKS and can audit or deny built-in Kubernetes security baselines.</td>
+  </tr>
+  <tr>
+    <td>Secrets integration</td>
+    <td>Secret Manager plus Workload Identity Federation for GKE.</td>
+    <td>Secrets Manager or Parameter Store with pod identity patterns.</td>
+    <td>Key Vault plus Secrets Store CSI and workload identity.</td>
+  </tr>
+  <tr>
+    <td>Logging notes</td>
+    <td>Use Cloud Logging / GKE logging exports.</td>
+    <td>Control-plane logs are not exported by default; enable them per cluster.</td>
+    <td>Use Azure Monitor and policy/compliance integrations.</td>
+  </tr>
+</table>
+
+<h3>What I Would Prioritize by Platform</h3>
+
+<div class="defence-list">
+  <h4>GKE</h4>
+  <ul>
+    <li>Prefer Workload Identity Federation for GKE over older metadata-protection workarounds.</li>
+    <li>Use Autopilot where its workload constraints fit your environment, because Google enforces more of the safe baseline for you.</li>
+    <li>Use Binary Authorization for higher-assurance workloads.</li>
+  </ul>
+</div>
+
+<div class="defence-list">
+  <h4>EKS</h4>
+  <ul>
+    <li>Review API endpoint exposure first, because public endpoint access is the starting default.</li>
+    <li>Enable control-plane logs early instead of waiting for the first incident.</li>
+    <li>Use EKS Pod Identity or IRSA so pods do not inherit the node's AWS permissions.</li>
+  </ul>
+</div>
+
+<div class="defence-list">
+  <h4>AKS</h4>
+  <ul>
+    <li>Use private clusters where your network design supports them.</li>
+    <li>Use Microsoft Entra Workload ID instead of static Azure credentials in Kubernetes Secrets.</li>
+    <li>Use Azure Policy for baseline enforcement and Key Vault CSI for externalized secret access.</li>
+  </ul>
+</div>
+
+<h3>Commented Example: Managed Cluster Baselines in Terraform</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Managed Kubernetes Baseline Comparison</div>
+  <pre>
+GKE baseline: Workload Identity + managed release channel
+EKS baseline: private endpoint + audit/control-plane logs + secret encryption
+AKS baseline: private cluster + OIDC issuer + workload identity + Azure Policy
+
+Same goal across providers:
+  reduce public exposure
+  federate workload identity
+  keep control-plane telemetry on
+  move policy from docs into IaC
+  </pre>
+</div>
+
+<pre>
+# GKE example: keep the cluster minimal here and layer security into the
+# control plane before workload teams ever touch it.
+resource "google_container_cluster" "secure_gke" {
+  name     = "secure-gke"
+  location = var.region
+
+  # Use separate node pools in real configurations; keep the cluster resource
+  # focused on the control-plane and cluster-wide settings.
+  remove_default_node_pool = true
+  initial_node_count       = 1
+
+  release_channel {
+    channel = "REGULAR"
+  }
+
+  workload_identity_config {
+    workload_pool = "${var.project_id}.svc.id.goog"
+  }
+}
+
+# EKS example: private endpoint, secret encryption, and all control-plane logs.
+resource "aws_eks_cluster" "secure_eks" {
+  name     = "secure-eks"
+  role_arn = aws_iam_role.eks_control_plane.arn
+
+  enabled_cluster_log_types = [
+    "api",
+    "audit",
+    "authenticator",
+    "controllerManager",
+    "scheduler"
+  ]
+
+  vpc_config {
+    subnet_ids              = var.private_subnet_ids
+    endpoint_private_access = true
+    endpoint_public_access  = false
+  }
+
+  encryption_config {
+    resources = ["secrets"]
+    provider {
+      key_arn = aws_kms_key.eks.arn
+    }
+  }
+}
+
+# AKS example: private control plane, OIDC issuer, workload identity, and
+# Azure Policy turned on from day one.
+resource "azurerm_kubernetes_cluster" "secure_aks" {
+  name                = "secure-aks"
+  location            = azurerm_resource_group.main.location
+  resource_group_name = azurerm_resource_group.main.name
+  dns_prefix          = "secureaks"
+
+  private_cluster_enabled  = true
+  azure_policy_enabled     = true
+  oidc_issuer_enabled      = true
+  workload_identity_enabled = true
+
+  default_node_pool {
+    name       = "system"
+    node_count = 3
+    vm_size    = "Standard_D4s_v5"
+  }
+
+  identity {
+    type = "SystemAssigned"
+  }
+}
+</pre>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">GKE</span>
+    <a href="https://docs.cloud.google.com/kubernetes-engine/docs/concepts/workload-identity">Workload Identity Federation for GKE</a>
+    <a href="https://docs.cloud.google.com/kubernetes-engine/docs/concepts/autopilot-security">Autopilot security</a>
+    <a href="https://docs.cloud.google.com/binary-authorization/docs/overview">Binary Authorization</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">EKS</span>
+    <a href="https://docs.aws.amazon.com/eks/latest/best-practices/security.html">EKS security best practices</a>
+    <a href="https://docs.aws.amazon.com/eks/latest/userguide/cluster-endpoint.html">EKS cluster endpoint access</a>
+    <a href="https://docs.aws.amazon.com/eks/latest/userguide/control-plane-logs.html">EKS control plane logs</a>
+    <a href="https://docs.aws.amazon.com/eks/latest/userguide/pod-identities.html">EKS Pod Identity</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">AKS</span>
+    <a href="https://learn.microsoft.com/en-us/azure/aks/workload-identity-overview">AKS Workload ID</a>
+    <a href="https://learn.microsoft.com/en-us/azure/aks/private-clusters">AKS private clusters</a>
+    <a href="https://learn.microsoft.com/en-us/azure/aks/use-azure-policy">AKS Azure Policy</a>
+    <a href="https://learn.microsoft.com/en-us/azure/aks/csi-secrets-store-configuration-options">AKS Key Vault CSI</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">Terraform</span>
+    <a href="https://developer.hashicorp.com/terraform/tutorials/kubernetes/kubernetes-provider">Manage Kubernetes resources</a>
+    <a href="https://developer.hashicorp.com/terraform/tutorials/kubernetes/gke">Provision GKE</a>
+    <a href="https://developer.hashicorp.com/terraform/tutorials/kubernetes/eks">Provision EKS</a>
+    <a href="https://developer.hashicorp.com/terraform/tutorials/kubernetes/aks">Provision AKS</a>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 10: DEPLOYMENT MODELS                                -->
+<!-- ============================================================ -->
+
+<h2 id="deployment-models">10. Real-World Deployment Models for Secure Kubernetes</h2>
+
+<p>Organizations do not all "do Kubernetes" the same way. The secure shape of the platform depends on three things: how much the tenants trust each other, how much blast-radius the business is willing to accept, and how much operational overhead the platform team can carry. Those three variables drive almost every deployment model you see in the wild.</p>
+
+<div class="info-box note">
+  <strong>Source boundary:</strong> the shared-cluster, node-isolation, and virtual-control-plane patterns come directly from upstream Kubernetes and cloud-provider multi-tenancy guidance. The <strong>deployment stamp / cell</strong> model is an architectural inference that combines those isolation patterns with the cloud deployment-stamp pattern used in large multitenant platforms.
+</div>
+
+<h3>How Platform Teams Usually Decide</h3>
+
+<table>
+  <tr>
+    <th>Question</th>
+    <th>If the answer is "lower"</th>
+    <th>If the answer is "higher"</th>
+  </tr>
+  <tr>
+    <td>How much do tenants trust each other?</td>
+    <td>Shared cluster, namespace-based isolation</td>
+    <td>Dedicated node pools, virtual control planes, or separate clusters</td>
+  </tr>
+  <tr>
+    <td>How severe is the regulatory / customer-isolation requirement?</td>
+    <td>Shared infrastructure is usually acceptable</td>
+    <td>Per-customer cluster, dedicated accounts/projects, or stamp/cell isolation</td>
+  </tr>
+  <tr>
+    <td>How much platform overhead can the org absorb?</td>
+    <td>Fewer shared clusters</td>
+    <td>More clusters, more automation, more fleet tooling</td>
+  </tr>
+  <tr>
+    <td>How much variation exists across workloads?</td>
+    <td>Single platform baseline works well</td>
+    <td>Tiered or hybrid model is usually better</td>
+  </tr>
+</table>
+
+<h3>Traffic Entry Patterns You See in Practice</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Pattern A - Shared Edge for a Shared Cluster</div>
+  <pre>
+Internet user
+    |
+    v
+DNS -> CDN / WAF -> public load balancer -> ingress / gateway
+                                           |
+                                           +--> namespace-a service -> pods
+                                           +--> namespace-b service -> pods
+
+Best for:
+  shared cluster models where many apps reuse one edge stack
+  </pre>
+</div>
+
+<div class="diagram">
+  <div class="diagram-title">Pattern B - Private Traffic into an Internal Cluster</div>
+  <pre>
+Corporate user or internal service
+    |
+    v
+VPN / private link / VPC peering / ExpressRoute
+    |
+    v
+internal load balancer -> ingress / gateway -> service -> pods
+
+Best for:
+  back-office apps, internal APIs, regulated systems, private clusters
+  </pre>
+</div>
+
+<div class="diagram">
+  <div class="diagram-title">Pattern C - Global Router to Many Clusters or Cells</div>
+  <pre>
+Client request
+    |
+    v
+Global edge / traffic router
+    |
+    +--> cluster or stamp A -> ingress -> service -> pods
+    +--> cluster or stamp B -> ingress -> service -> pods
+    +--> cluster or stamp C -> ingress -> service -> pods
+
+Best for:
+  per-tenant clusters, regional cells, deployment stamps, hybrid tiering
+  </pre>
+</div>
+
+<details open><summary><h3 style="display:inline;cursor:pointer;">Model 1: Shared Cluster, Namespace per Team or Workload</h3></summary>
+
+<p>This is the most common starting point for internal platform teams. One production cluster per region hosts multiple teams or apps. Each tenant gets one or more namespaces, and the platform team uses RBAC, quotas, Pod Security Admission, and NetworkPolicy to keep tenants from stepping on each other.</p>
+
+<h4>Why organizations choose it</h4>
+<ul>
+  <li>They want the lowest operational overhead.</li>
+  <li>Teams are semi-trusted employees rather than hostile external tenants.</li>
+  <li>Service discovery and platform reuse matter more than hard isolation.</li>
+  <li>The business wants one shared ingress, one shared observability stack, and one shared platform baseline.</li>
+</ul>
+
+<div class="diagram">
+  <div class="diagram-title">Model 1 - Shared Cluster with Namespace Tenants</div>
+  <pre>
+                 public DNS / WAF / LB
+                          |
+                          v
+                   shared ingress layer
+                          |
+        +-----------------+-----------------+
+        |                                   |
+        v                                   v
+  namespace team-a                    namespace team-b
+    service / pods                      service / pods
+    quota / PSA / RBAC                  quota / PSA / RBAC
+
+One control plane, one data plane, many logical tenants.
+  </pre>
+</div>
+
+<h4>Step-by-step rollout</h4>
+<ol>
+  <li>Provision one secure cluster per environment and region.</li>
+  <li>Install the shared edge layer: ingress controller or gateway, cert manager, DNS automation, logging, and metrics.</li>
+  <li>Create one namespace per team or workload, and label it with Pod Security Admission policy.</li>
+  <li>Apply RoleBindings, ResourceQuotas, LimitRanges, and default-deny network policies for each namespace.</li>
+  <li>Let app teams deploy only into their own namespaces through GitOps or Terraform.</li>
+  <li>Point application hostnames at the shared load balancer and route traffic to the correct namespace service.</li>
+</ol>
+
+<h4>Terraform sketch</h4>
+
+<pre>
+# Shared cluster edge plus one tenant namespace.
+resource "helm_release" "ingress_nginx" {
+  name       = "ingress-nginx"
+  repository = "https://kubernetes.github.io/ingress-nginx"
+  chart      = "ingress-nginx"
+  namespace  = "ingress-system"
+}
+
+resource "kubernetes_manifest" "team_a_namespace" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "Namespace"
+    metadata = {
+      name = "team-a"
+      labels = {
+        "pod-security.kubernetes.io/enforce" = "restricted"
+      }
+    }
+  }
+}
+
+resource "kubernetes_manifest" "team_a_ingress" {
+  manifest = {
+    apiVersion = "networking.k8s.io/v1"
+    kind       = "Ingress"
+    metadata = {
+      name      = "team-a-api"
+      namespace = "team-a"
+    }
+    spec = {
+      ingressClassName = "nginx"
+      rules = [
+        {
+          host = "api.team-a.example.com"
+          http = {
+            paths = [
+              {
+                path     = "/"
+                pathType = "Prefix"
+                backend = {
+                  service = {
+                    name = "team-a-api"
+                    port = { number = 80 }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
+</pre>
+
+<table>
+  <tr>
+    <th>Business pros</th>
+    <th>Business cons</th>
+    <th>Security pros</th>
+    <th>Security cons</th>
+  </tr>
+  <tr>
+    <td>Lowest cost, easiest onboarding, simplest platform operations, strong resource sharing</td>
+    <td>Platform teams become a shared dependency, and one shared service mistake can affect many teams at once</td>
+    <td>Works well with RBAC, quotas, and network policy for semi-trusted internal teams</td>
+    <td>Weakest isolation boundary, noisy-neighbor risk, shared control-plane blast radius, and shared-node exposure</td>
+  </tr>
+</table>
+
+</details>
+<details><summary><h3 style="display:inline;cursor:pointer;">Model 2: Shared Cluster with Dedicated Node Pools or Sole-Tenant Nodes</h3></summary>
+
+<p>This model keeps the shared control plane but reserves parts of the data plane for specific tenants or sensitivity tiers. Organizations adopt it when one shared cluster is still desirable, but some workloads need stronger separation because of compliance, performance, licensing, or hardware requirements.</p>
+
+<h4>Why organizations choose it</h4>
+<ul>
+  <li>Some workloads are more sensitive than others, but the org still wants one shared cluster.</li>
+  <li>Teams need GPU, FIPS, confidential, or higher-memory nodes.</li>
+  <li>Noisy-neighbor problems show up in the shared-node model.</li>
+  <li>The business wants a middle ground between one cluster for all and a cluster per tenant.</li>
+</ul>
+
+<div class="diagram">
+  <div class="diagram-title">Model 2 - Shared Control Plane, Segmented Data Plane</div>
+  <pre>
+                     shared cluster control plane
+                                |
+     +--------------------------+---------------------------+
+     |                          |                           |
+     v                          v                           v
+ system node pool         general app pool            pci / sensitive pool
+ ingress, coredns         standard apps               isolated workloads
+ observability            lower trust needs           taints + selectors
+
+Traffic can still enter through one shared edge, or sensitive apps can use
+their own internal ingress on the isolated pool.
+  </pre>
+</div>
+
+<h4>Step-by-step rollout</h4>
+<ol>
+  <li>Start from a secure shared-cluster baseline.</li>
+  <li>Create separate node pools for system services, standard apps, and sensitive workloads.</li>
+  <li>Apply taints and labels to the dedicated pool, and enforce matching tolerations and selectors in policy.</li>
+  <li>Keep shared ingress on the system pool, or deploy a dedicated ingress for sensitive workloads.</li>
+  <li>Place higher-risk or regulated apps only on the isolated node pool.</li>
+  <li>Charge back node-pool cost and track risk tier by namespace or tenant label.</li>
+</ol>
+
+<h4>Terraform sketch</h4>
+
+<pre>
+# Example implementation on AKS: isolate PCI workloads on their own node pool.
+resource "azurerm_kubernetes_cluster_node_pool" "pci" {
+  name                  = "pci"
+  kubernetes_cluster_id = azurerm_kubernetes_cluster.secure_aks.id
+  vm_size               = "Standard_D4s_v5"
+  mode                  = "User"
+  node_count            = 3
+
+  node_labels = {
+    tier = "pci"
+  }
+
+  node_taints = [
+    "tier=pci:NoSchedule"
+  ]
+}
+
+resource "kubernetes_manifest" "pci_api" {
+  manifest = {
+    apiVersion = "apps/v1"
+    kind       = "Deployment"
+    metadata = {
+      name      = "pci-api"
+      namespace = "payments-pci"
+    }
+    spec = {
+      template = {
+        spec = {
+          nodeSelector = {
+            tier = "pci"
+          }
+          tolerations = [
+            {
+              key      = "tier"
+              operator = "Equal"
+              value    = "pci"
+              effect   = "NoSchedule"
+            }
+          ]
+          containers = [
+            {
+              name  = "app"
+              image = "ghcr.io/acme/pci-api@sha256:3333333333333333333333333333333333333333333333333333333333333333"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
+</pre>
+
+<table>
+  <tr>
+    <th>Business pros</th>
+    <th>Business cons</th>
+    <th>Security pros</th>
+    <th>Security cons</th>
+  </tr>
+  <tr>
+    <td>Better performance isolation, easier chargeback by tier, lower cost than separate clusters</td>
+    <td>Scheduling rules and node-pool operations get more complex, and special pools can sit underused</td>
+    <td>Stronger node-level separation for sensitive apps and easier placement onto controlled hardware classes</td>
+    <td>Still one shared control plane, and taints / labels are placement tools rather than hard hostile-tenant isolation by themselves</td>
+  </tr>
+</table>
+
+</details>
+<details><summary><h3 style="display:inline;cursor:pointer;">Model 3: Virtual Control Plane per Tenant</h3></summary>
+
+<p>This model gives each tenant an isolated Kubernetes API experience while still sharing the underlying worker fleet. Organizations choose it when namespace isolation is not enough, but running full dedicated clusters for every tenant would create too much cost or operational sprawl.</p>
+
+<h4>Why organizations choose it</h4>
+<ul>
+  <li>Tenants need their own API experience, CRDs, or cluster-scoped objects.</li>
+  <li>The platform wants better control-plane isolation without a full cluster explosion.</li>
+  <li>The business wants strong self-service for tenants or internal platform customers.</li>
+  <li>The team is willing to accept more platform complexity to avoid many physical clusters.</li>
+</ul>
+
+<div class="diagram">
+  <div class="diagram-title">Model 3 - Virtual Control Planes on a Shared Host Cluster</div>
+  <pre>
+tenant A kubectl ---> virtual control plane A ---+
+tenant B kubectl ---> virtual control plane B ---+--> host cluster workers
+tenant C kubectl ---> virtual control plane C ---+
+                                                  |
+                                                  +--> synced workloads on shared nodes
+
+Control-plane isolation improves.
+Data-plane isolation still has to be handled separately.
+  </pre>
+</div>
+
+<h4>Step-by-step rollout</h4>
+<ol>
+  <li>Provision a secure host cluster that only the platform team administers directly.</li>
+  <li>Create one host namespace per tenant or business unit.</li>
+  <li>Deploy a virtual-control-plane product into each host namespace.</li>
+  <li>Define what gets synchronized into the host cluster, such as workloads, services, or ingress objects.</li>
+  <li>Keep ingress, network policy, and data-plane isolation enforced in the host cluster.</li>
+  <li>Expose either a tenant-specific API endpoint or a tenant-specific kubeconfig to the tenant admins.</li>
+</ol>
+
+<h4>Terraform sketch</h4>
+
+<pre>
+# One implementation path is to wrap a virtual control plane product in a
+# Terraform module. The exact resources vary by product and organization.
+resource "kubernetes_manifest" "tenant_a_host_namespace" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "Namespace"
+    metadata = {
+      name = "vcluster-tenant-a"
+    }
+  }
+}
+
+module "tenant_a_virtual_control_plane" {
+  source = "./modules/virtual-control-plane"
+
+  tenant_name    = "tenant-a"
+  host_namespace = "vcluster-tenant-a"
+
+  # Typical module inputs:
+  # - expose_api = false (private only)
+  # - sync_ingresses = true
+  # - sync_services = true
+  # - resource_limits and namespace policies
+}
+
+resource "kubernetes_manifest" "tenant_a_host_default_deny" {
+  manifest = {
+    apiVersion = "networking.k8s.io/v1"
+    kind       = "NetworkPolicy"
+    metadata = {
+      name      = "default-deny"
+      namespace = "vcluster-tenant-a"
+    }
+    spec = {
+      podSelector = {}
+      policyTypes = ["Ingress", "Egress"]
+    }
+  }
+}
+</pre>
+
+<table>
+  <tr>
+    <th>Business pros</th>
+    <th>Business cons</th>
+    <th>Security pros</th>
+    <th>Security cons</th>
+  </tr>
+  <tr>
+    <td>More tenant autonomy than namespaces, less infrastructure than full dedicated clusters</td>
+    <td>Operationally complex, product-dependent, and harder to troubleshoot than plain shared clusters</td>
+    <td>Better control-plane isolation and a cleaner tenant self-service model for cluster-scoped objects</td>
+    <td>Does not remove shared-node or shared-data-plane risk by itself, and product misconfiguration can weaken the boundary</td>
+  </tr>
+</table>
+
+</details>
+<details><summary><h3 style="display:inline;cursor:pointer;">Model 4: Cluster per Team, Product, or Environment</h3></summary>
+
+<p>This is common in larger enterprises. Instead of one giant shared cluster, each team or product line gets its own cluster, usually with a separate cluster for each environment like <code>dev</code>, <code>staging</code>, and <code>prod</code>. Often there is also a separate cloud account, project, or subscription boundary around each cluster.</p>
+
+<h4>Why organizations choose it</h4>
+<ul>
+  <li>Different teams need independent release cadences and maintenance windows.</li>
+  <li>The platform team wants clearer blast-radius boundaries.</li>
+  <li>The business wants environment isolation and simpler ownership boundaries.</li>
+  <li>Cloud-account or project isolation is already the norm.</li>
+</ul>
+
+<div class="diagram">
+  <div class="diagram-title">Model 4 - Cluster per Team / Environment</div>
+  <pre>
+payments-prod DNS  ---> payments-prod cluster ---> ingress -> services -> pods
+payments-stage ---> payments-stage cluster ---> ingress -> services -> pods
+orders-prod   ---> orders-prod cluster   ---> ingress -> services -> pods
+
+Often paired with:
+  separate AWS accounts / GCP projects / Azure subscriptions
+  centralized logging and policy, decentralized app ownership
+  </pre>
+</div>
+
+<h4>Step-by-step rollout</h4>
+<ol>
+  <li>Create the cloud boundary first: AWS account, GCP project, or Azure subscription per team or per environment.</li>
+  <li>Provision one secure baseline cluster module for each target environment.</li>
+  <li>Attach each cluster to centralized identity, logging, and policy systems.</li>
+  <li>Expose only the production cluster publicly if the app is internet-facing; keep lower environments private.</li>
+  <li>Give the owning team admin rights only in their own clusters or namespaces.</li>
+  <li>Roll out cluster upgrades progressively by environment instead of all at once.</li>
+</ol>
+
+<h4>Terraform sketch</h4>
+
+<pre>
+# Cluster fleet defined as code. In a real organization, each item often maps
+# to its own account, project, or subscription as well.
+locals {
+  team_clusters = {
+    "payments-dev" = {
+      region             = "us-east-1"
+      public_app_ingress = false
+    }
+    "payments-prod" = {
+      region             = "us-east-1"
+      public_app_ingress = true
+    }
+    "orders-prod" = {
+      region             = "us-west-2"
+      public_app_ingress = true
+    }
+  }
+
+  public_app_clusters = {
+    for name, cfg in local.team_clusters : name => cfg if cfg.public_app_ingress
+  }
+}
+
+module "team_cluster" {
+  for_each = local.team_clusters
+  source   = "./modules/eks-cluster-baseline"
+
+  name                  = each.key
+  region                = each.value.region
+  # Keep the Kubernetes API private even for internet-facing applications.
+  endpoint_public_access  = false
+  endpoint_private_access = true
+
+  # This module input controls whether the app gets a public ingress / LB.
+  expose_public_ingress   = each.value.public_app_ingress
+}
+
+resource "aws_route53_record" "public_app_dns" {
+  for_each = local.public_app_clusters
+
+  zone_id = aws_route53_zone.public.zone_id
+  name    = "${each.key}.apps.example.com"
+  type    = "CNAME"
+  ttl     = 300
+
+  # App traffic lands on the cluster ingress hostname, not on the EKS API.
+  records = [module.team_cluster[each.key].ingress_hostname]
+}
+</pre>
+
+<table>
+  <tr>
+    <th>Business pros</th>
+    <th>Business cons</th>
+    <th>Security pros</th>
+    <th>Security cons</th>
+  </tr>
+  <tr>
+    <td>Clear ownership, safer upgrades, easier environment separation, simpler accountability</td>
+    <td>More clusters to patch, observe, and govern, which raises the bar for automation and support tooling</td>
+    <td>Much stronger blast-radius control than one mega-cluster and easier alignment with account / project / subscription boundaries</td>
+    <td>Baseline drift becomes a real risk if cluster modules, policies, or logging standards are not centrally enforced</td>
+  </tr>
+</table>
+
+</details>
+<details><summary><h3 style="display:inline;cursor:pointer;">Model 5: Cluster per Customer or Dedicated Tenant Stack</h3></summary>
+
+<p>This is the strongest practical isolation model most SaaS organizations use before going to bespoke infrastructure. One customer or tenant gets its own cluster, often plus a dedicated database and dedicated cloud boundary. The tenant accesses the app through its own hostname, and traffic never shares a Kubernetes control plane with other customers.</p>
+
+<h4>Why organizations choose it</h4>
+<ul>
+  <li>Regulated or strategic customers require hard isolation.</li>
+  <li>The contract includes customer-managed keys, data locality, or dedicated infrastructure.</li>
+  <li>The business sells a premium or dedicated tier.</li>
+  <li>Risk tolerance for cross-tenant incidents is very low.</li>
+</ul>
+
+<div class="diagram">
+  <div class="diagram-title">Model 5 - Dedicated Cluster per Customer</div>
+  <pre>
+tenant-a.example.com ---> dedicated edge / LB ---> tenant-a cluster ---> app + db
+tenant-b.example.com ---> dedicated edge / LB ---> tenant-b cluster ---> app + db
+tenant-c.example.com ---> dedicated edge / LB ---> tenant-c cluster ---> app + db
+
+Every tenant gets a separate cluster boundary.
+  </pre>
+</div>
+
+<h4>Step-by-step rollout</h4>
+<ol>
+  <li>Tenant onboarding triggers an IaC pipeline.</li>
+  <li>The pipeline creates a tenant-specific cloud boundary, cluster, data store, secret store, and DNS name.</li>
+  <li>Certificates and ingress are issued only for that tenant hostname.</li>
+  <li>Observability and backup wiring are attached automatically.</li>
+  <li>Updates are rolled out in rings or maintenance windows tenant by tenant.</li>
+  <li>When the tenant churns, the whole stack can be archived or destroyed through the same pipeline.</li>
+</ol>
+
+<h4>Terraform sketch</h4>
+
+<pre>
+# Automated single-tenant deployment model. Each tenant gets a dedicated stack.
+locals {
+  dedicated_tenants = {
+    "acme-bank" = { region = "eastus" }
+    "northwind-health" = { region = "westus3" }
+  }
+}
+
+module "tenant_stack" {
+  for_each = local.dedicated_tenants
+  source   = "./modules/aks-single-tenant-stack"
+
+  tenant_name = each.key
+  region      = each.value.region
+}
+
+resource "azurerm_dns_cname_record" "tenant_api" {
+  for_each            = local.dedicated_tenants
+  name                = "${each.key}-api"
+  zone_name           = azurerm_dns_zone.public.name
+  resource_group_name = azurerm_resource_group.dns.name
+  ttl                 = 300
+  record              = module.tenant_stack[each.key].ingress_hostname
+}
+</pre>
+
+<table>
+  <tr>
+    <th>Business pros</th>
+    <th>Business cons</th>
+    <th>Security pros</th>
+    <th>Security cons</th>
+  </tr>
+  <tr>
+    <td>Premium offering, straightforward chargeback, and easy tenant-specific customization</td>
+    <td>Highest cost, slower provisioning without strong automation, and the most cluster lifecycle overhead</td>
+    <td>Strongest practical isolation for control plane, networking, and data-path blast radius</td>
+    <td>Many more stacks to patch and monitor, so weak automation can create inconsistent tenant security baselines</td>
+  </tr>
+</table>
+
+</details>
+<details><summary><h3 style="display:inline;cursor:pointer;">Model 6: Deployment Stamps or Cells</h3></summary>
+
+<p>This is what many large SaaS platforms evolve toward. Instead of one giant shared cluster or one cluster per customer, the platform runs multiple repeatable <strong>cells</strong> or <strong>stamps</strong>. Each cell contains a cluster and its supporting resources, and each cell serves a bounded subset of tenants. When a cell fills up or a region needs more capacity, the platform creates another one.</p>
+
+<h4>Why organizations choose it</h4>
+<ul>
+  <li>They need predictable horizontal scaling and bounded blast radius.</li>
+  <li>They want to limit the impact of incidents to one cell instead of the whole platform.</li>
+  <li>They serve many tenants and need a repeatable way to add capacity.</li>
+  <li>The business needs regional placement, deployment rings, or tenant sharding.</li>
+</ul>
+
+<div class="diagram">
+  <div class="diagram-title">Model 6 - Stamp / Cell Routing</div>
+  <pre>
+                         global router / front door
+                                   |
+           +-----------------------+-----------------------+
+           |                                               |
+           v                                               v
+     cell us-east-1-a                                cell us-west-2-a
+   cluster + ingress + db                          cluster + ingress + db
+   tenants A-F mapped here                         tenants G-L mapped here
+
+Add a new cell when capacity, region, or risk rules say to split.
+  </pre>
+</div>
+
+<h4>Step-by-step rollout</h4>
+<ol>
+  <li>Define one reusable cell module that includes the cluster, ingress, logging, secrets, and data dependencies.</li>
+  <li>Deploy one or more cells per region.</li>
+  <li>Maintain a tenant-to-cell routing map in a central system.</li>
+  <li>Route requests through a global edge or tenant-specific DNS to the correct cell.</li>
+  <li>When a cell approaches its limit, deploy a new one and place new tenants there.</li>
+  <li>Use deployment rings so some cells receive upgrades earlier than others.</li>
+</ol>
+
+<h4>Terraform sketch</h4>
+
+<pre>
+# Cell modules repeat the same secure baseline with different capacity units.
+module "cell_use1_a" {
+  source      = "./modules/secure-cell"
+  cell_name   = "use1-a"
+  region      = "us-east-1"
+  tenant_tier = "standard"
+}
+
+module "cell_usw2_a" {
+  source      = "./modules/secure-cell"
+  cell_name   = "usw2-a"
+  region      = "us-west-2"
+  tenant_tier = "standard"
+}
+
+locals {
+  tenant_to_cell = {
+    "tenant-a" = module.cell_use1_a.ingress_hostname
+    "tenant-b" = module.cell_use1_a.ingress_hostname
+    "tenant-c" = module.cell_usw2_a.ingress_hostname
+  }
+}
+
+resource "aws_route53_record" "tenant_dns" {
+  for_each = local.tenant_to_cell
+  zone_id  = aws_route53_zone.public.zone_id
+  name     = "${each.key}.api.example.com"
+  type     = "CNAME"
+  ttl      = 60
+  records  = [each.value]
+}
+</pre>
+
+<table>
+  <tr>
+    <th>Business pros</th>
+    <th>Business cons</th>
+    <th>Security pros</th>
+    <th>Security cons</th>
+  </tr>
+  <tr>
+    <td>Scales well, supports regional growth, and enables controlled rollout rings</td>
+    <td>Needs strong tenant-routing logic, capacity planning, and mature fleet operations</td>
+    <td>Limits incident blast radius to a cell instead of the entire platform and makes regional isolation easier</td>
+    <td>Tenants still share risk inside each cell, and routing or placement mistakes can undermine isolation goals</td>
+  </tr>
+</table>
+
+</details>
+<details><summary><h3 style="display:inline;cursor:pointer;">Model 7: Hybrid Tiered Platform</h3></summary>
+
+<p>Many real organizations end up here. Standard tenants share infrastructure, higher-value tenants get dedicated node pools or dedicated clusters, and premium or regulated customers get dedicated tenant stacks. The routing layer decides which backend pattern a tenant uses.</p>
+
+<h4>Why organizations choose it</h4>
+<ul>
+  <li>They want one platform with multiple commercial tiers.</li>
+  <li>Most tenants can be low-cost, but a few need stronger isolation.</li>
+  <li>The business wants to upgrade tenants from shared to dedicated without redesigning the whole platform.</li>
+  <li>The platform team needs a migration path instead of a one-time architecture bet.</li>
+</ul>
+
+<div class="diagram">
+  <div class="diagram-title">Model 7 - Hybrid Tiering</div>
+  <pre>
+                global edge / tenant router
+                          |
+        +-----------------+---------------------+
+        |                                       |
+        v                                       v
+ shared standard cluster                 dedicated premium clusters
+ namespaces for basic tier              one cluster or node pool per premium tenant
+ low-cost pooled capacity               higher isolation, higher price
+
+Tenant metadata decides where traffic goes.
+  </pre>
+</div>
+
+<h4>Step-by-step rollout</h4>
+<ol>
+  <li>Build one shared standard cluster as the default landing zone for most tenants.</li>
+  <li>Add a dedicated-isolation path, either as separate node pools or separate clusters.</li>
+  <li>Store each tenant's service tier and placement target in a routing map.</li>
+  <li>Expose a consistent customer hostname pattern regardless of where the tenant runs.</li>
+  <li>Automate promotion from shared to dedicated placement when contracts, risk, or performance demands change.</li>
+</ol>
+
+<h4>Terraform sketch</h4>
+
+<pre>
+# A common commercial pattern: shared baseline for most tenants, dedicated
+# clusters for a premium subset.
+module "shared_standard_cluster" {
+  source = "./modules/shared-standard-cluster"
+  name   = "shared-standard"
+}
+
+locals {
+  premium_tenants = {
+    "acme-bank" = { region = "us-east-1" }
+    "fabrikam-health" = { region = "us-west-2" }
+  }
+}
+
+module "premium_cluster" {
+  for_each = local.premium_tenants
+  source   = "./modules/dedicated-tenant-cluster"
+
+  tenant_name = each.key
+  region      = each.value.region
+}
+</pre>
+
+<table>
+  <tr>
+    <th>Business pros</th>
+    <th>Business cons</th>
+    <th>Security pros</th>
+    <th>Security cons</th>
+  </tr>
+  <tr>
+    <td>Supports multiple pricing tiers and lets the org balance cost with isolation</td>
+    <td>Routing, onboarding, billing, and migration logic become more complex</td>
+    <td>High-risk tenants can be isolated without forcing every tenant into the highest-cost model</td>
+    <td>Mixed architecture increases policy and automation complexity, and tenant-placement mistakes can put a workload in the wrong security tier</td>
+  </tr>
+</table>
+
+<h3>How Traffic Is Directed in Real Organizations</h3>
+
+<p>In practice, traffic routing is usually one of three things:</p>
+
+<ul>
+  <li><strong>Shared ingress routing:</strong> one load balancer and one ingress or gateway routes by hostname or path to services inside one cluster.</li>
+  <li><strong>Tenant-specific DNS:</strong> each tenant hostname points directly to a dedicated cluster or dedicated cell.</li>
+  <li><strong>Global routing layer:</strong> a front door, CDN, WAF, or API gateway looks up the tenant placement and forwards traffic to the correct cluster or cell.</li>
+</ul>
+
+<div class="diagram">
+  <div class="diagram-title">Step-by-Step Traffic Resolution</div>
+  <pre>
+1. Client resolves hostname
+2. DNS or global edge sends the request to the chosen cluster or cell
+3. External or internal load balancer lands traffic on the cluster edge
+4. Ingress / Gateway routes to the correct Service
+5. Service forwards to pods
+6. NetworkPolicy / service mesh / app auth still decide what is allowed
+  </pre>
+</div>
+
+<h3>How to Deploy This in Real Life at an Organization</h3>
+
+<p>The implementation order matters. Real platform teams usually decide the isolation model first, then lock in the cloud boundary and traffic path, and only then let application teams onboard. That sequence prevents a shared-cluster prototype from accidentally becoming the long-term production architecture.</p>
+
+<div class="diagram">
+  <div class="diagram-title">Practical Rollout Sequence</div>
+  <pre>
+1. Classify tenants and workloads
+      |
+      v
+2. Pick the isolation model
+      |
+      v
+3. Create cloud boundary + network
+      |
+      v
+4. Provision cluster baseline module
+      |
+      v
+5. Deploy edge, DNS, and ingress / gateway
+      |
+      v
+6. Add tenant placement rules and policy
+      |
+      v
+7. Onboard apps through GitOps / Terraform
+      |
+      v
+8. Operate with logging, upgrades, and fleet automation
+  </pre>
+</div>
+
+<ol>
+  <li><strong>Classify tenants and workloads.</strong> Start with a simple placement matrix: trusted internal teams, regulated workloads, premium customers, and standard multitenant workloads. Example: an internal analytics dashboard might fit Model 1, while a dedicated bank customer fits Model 5.</li>
+  <li><strong>Pick the isolation model before building the cluster.</strong> If the business needs hard tenant isolation, decide that now instead of trying to bolt it onto a shared cluster later.</li>
+  <li><strong>Create the cloud boundary and network path.</strong> Example: for Model 4, create one AWS account per environment and peer those VPCs to central logging and identity services. For Model 5, create one Azure subscription or resource group per tenant tier and keep the tenant's ingress, database, and cluster in that boundary.</li>
+  <li><strong>Provision a reusable cluster baseline module.</strong> The module should turn on private API access where possible, logging, secret encryption, workload identity, baseline policy, and shared add-ons such as ingress, cert-manager, DNS automation, and metrics.</li>
+  <li><strong>Wire the traffic path end to end.</strong> Example: `tenant-a.example.com` resolves in DNS, passes through a CDN/WAF, lands on a load balancer, then reaches an ingress controller or Gateway API object that routes to the right service. Internal applications often swap the public edge for private DNS plus VPN, Private Link, peering, or ExpressRoute.</li>
+  <li><strong>Apply the model-specific placement controls.</strong> In Model 1 that means namespaces, RBAC, quotas, and default-deny network policy. In Model 2 it means dedicated node pools plus scheduling policy. In Model 6 it means a tenant-to-cell routing map and DNS or global-edge placement.</li>
+  <li><strong>Onboard teams or tenants through automation, not tickets.</strong> Example: a tenant onboarding pipeline creates the namespace or cluster, issues DNS, attaches logging, and outputs the hostname and deployment repo. That is the difference between a stable platform model and a manual snowflake.</li>
+  <li><strong>Run it like a fleet.</strong> Standardize upgrades, backup policy, cert rotation, vulnerability response, and audit-log export. Shared clusters need strong namespace hygiene; fleet models need strong drift control and routing visibility.</li>
+</ol>
+
+<table>
+  <tr>
+    <th>If you choose this model</th>
+    <th>What the real-life setup usually looks like</th>
+  </tr>
+  <tr>
+    <td>Model 1</td>
+    <td>One cluster per environment or region, one shared ingress, one namespace per team, and hostnames routed into namespace-scoped services.</td>
+  </tr>
+  <tr>
+    <td>Model 2</td>
+    <td>One shared cluster with separate node pools for system, standard, and sensitive workloads, plus taints and policy enforcing which apps land where.</td>
+  </tr>
+  <tr>
+    <td>Model 4</td>
+    <td>A cluster module deployed many times, often one per team and environment, with private control planes and public application ingress only where needed.</td>
+  </tr>
+  <tr>
+    <td>Model 5</td>
+    <td>A tenant onboarding pipeline creates a dedicated cluster, ingress hostname, secrets wiring, database, and observability stack for each customer.</td>
+  </tr>
+  <tr>
+    <td>Model 6</td>
+    <td>A global router or DNS layer maps each tenant to a specific cell, and the platform adds new cells as capacity or risk boundaries require.</td>
+  </tr>
+</table>
+
+<h3>End-to-End Example: One Org, Many Sites and Apps</h3>
+
+<p>This walkthrough shows how a single organization can mix the models above to run a marketing site, a customer portal, and internal ops tools without building a one-off platform for each.</p>
+
+<div class="diagram">
+  <div class="diagram-title">Traffic and Placement Overview</div>
+  <pre>
+               Public DNS / CDN / WAF
+                     |
+                     +--> www.example.com -> shared-web cluster (Model 1)
+                     |
+                     +--> portal.example.com -> dedicated cluster (Model 5)
+
+         Internal DNS / VPN / Private Link
+                     |
+                     +--> ops.internal.example.com -> private ops cluster (Model 4)
+
+Data boundaries:
+- portal runs in its own cloud account/project + cluster
+- ops cluster is private-only; API endpoint and ingress stay on private networking
+- shared web apps reuse one shared edge and shared cluster
+  </pre>
+</div>
+
+<h4>Step-by-step rollout</h4>
+<ol>
+  <li>Create three cloud boundaries: <code>web</code> (shared), <code>portal</code> (dedicated), <code>ops</code> (private internal).</li>
+  <li>Provision clusters:
+    <ul>
+      <li><strong>shared-web</strong>: Model 1 (namespaces per app) with public ingress.</li>
+      <li><strong>portal-prod</strong>: Model 5 (dedicated cluster) with private API, public app ingress only.</li>
+      <li><strong>ops-internal</strong>: Model 4 (cluster per environment) with private API and internal ingress only.</li>
+    </ul>
+  </li>
+  <li>Apply placement policy:
+    <ul>
+      <li><code>marketing</code> and <code>docs</code> namespaces on <code>shared-web</code> with default-deny policy.</li>
+      <li><code>portal</code> namespace only on <code>portal-prod</code>, backed by dedicated DB and secret store.</li>
+      <li><code>ops</code> namespace on <code>ops-internal</code> with VPN/Private Link–only ingress.</li>
+    </ul>
+  </li>
+  <li>Wire traffic:
+    <ul>
+      <li>Public DNS: <code>www.example.com</code> CNAME -> <code>shared-web</code> ingress hostname.</li>
+      <li>Public DNS: <code>portal.example.com</code> CNAME -> <code>portal-prod</code> ingress hostname.</li>
+      <li>Internal DNS: <code>ops.internal.example.com</code> -> internal load balancer IP in <code>ops-internal</code>.</li>
+    </ul>
+  </li>
+  <li>Enforce identity and policy:
+    <ul>
+      <li>PSA <code>restricted</code> on all namespaces; admission policy blocks privileged/hostPath everywhere.</li>
+      <li>Workload identity per cluster (GKE Workload Identity, EKS Pod Identity, AKS Workload ID).</li>
+      <li>Default-deny egress; explicit allow for DNS, database, and required third-party APIs per namespace.</li>
+    </ul>
+  </li>
+</ol>
+
+<h4>Terraform sketch (DNS + placement)</h4>
+
+<pre>
+# Assume cluster modules already output ingress hostnames.
+locals {
+  sites = {
+    "www"    = { cluster = "shared-web",   hostname = "www.example.com" }
+    "docs"   = { cluster = "shared-web",   hostname = "docs.example.com" }
+    "portal" = { cluster = "portal-prod",  hostname = "portal.example.com" }
+  }
+}
+
+# Route53 example for public sites; use your provider equivalents.
+resource "aws_route53_record" "site_dns" {
+  for_each = local.sites
+
+  zone_id = aws_route53_zone.public.zone_id
+  name    = each.value.hostname
+  type    = "CNAME"
+  ttl     = 300
+
+  records = [
+    module.cluster[each.value.cluster].ingress_hostname
+  ]
+}
+
+# Namespace and NetworkPolicy for the shared web cluster.
+resource "kubernetes_manifest" "marketing_namespace" {
+  manifest = {
+    apiVersion = "v1"
+    kind       = "Namespace"
+    metadata = {
+      name = "marketing"
+      labels = { "pod-security.kubernetes.io/enforce" = "restricted" }
+    }
+  }
+}
+
+resource "kubernetes_manifest" "marketing_default_deny" {
+  manifest = {
+    apiVersion = "networking.k8s.io/v1"
+    kind       = "NetworkPolicy"
+    metadata = { name = "default-deny", namespace = "marketing" }
+    spec = {
+      podSelector = {}
+      policyTypes = ["Ingress", "Egress"]
+      egress = [
+        {
+          to = [
+            { namespaceSelector = { matchLabels = { "kubernetes.io/metadata.name" = "kube-system" } } }
+          ]
+          ports = [
+            { protocol = "UDP", port = 53 }
+          ]
+        }
+      ]
+    }
+  }
+}
+
+# Private internal DNS (illustrative; use your DNS provider).
+resource "aws_route53_record" "ops_internal" {
+  zone_id = aws_route53_zone.internal.zone_id
+  name    = "ops.internal.example.com"
+  type    = "A"
+  ttl     = 60
+  records = [module.cluster["ops-internal"].internal_ingress_ip]
+}
+</pre>
+
+<h3>What Most Organizations Actually Do Over Time</h3>
+
+<p>Many teams start with <strong>Model 1</strong>, then add <strong>Model 2</strong> for sensitive workloads. As the business grows, they move some domains into <strong>Model 4</strong> or <strong>Model 6</strong>. Regulated or premium customers often get <strong>Model 5</strong> or the premium side of <strong>Model 7</strong>. In other words: Kubernetes platforms usually become more mixed over time, not less.</p>
+
+<div class="refs">
+  <div class="refs-title">References</div>
+  <div class="refs-row">
+    <span class="refs-label">Kubernetes</span>
+    <a href="https://kubernetes.io/docs/concepts/security/multi-tenancy/">Multi-tenancy</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">EKS</span>
+    <a href="https://docs.aws.amazon.com/eks/latest/best-practices/tenant-isolation.html">Tenant isolation</a>
+    <a href="https://docs.aws.amazon.com/eks/latest/best-practices/multi-account-strategy.html">Multi-account strategy</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">GKE</span>
+    <a href="https://docs.cloud.google.com/kubernetes-engine/docs/concepts/multitenancy-overview">Cluster multi-tenancy</a>
+    <a href="https://docs.cloud.google.com/kubernetes-engine/docs/best-practices/enterprise-multitenancy">Enterprise multi-tenancy</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">AKS</span>
+    <a href="https://learn.microsoft.com/en-us/azure/architecture/guide/multitenant/service/aks">Use AKS in a multitenant solution</a>
+  </div>
+  <div class="refs-row">
+    <span class="refs-label">Pattern</span>
+    <a href="https://learn.microsoft.com/en-us/azure/architecture/patterns/deployment-stamp">Deployment Stamps pattern</a>
+    <a href="https://learn.microsoft.com/en-us/azure/architecture/guide/multitenant/approaches/deployment-configuration">Multitenant deployment approaches</a>
+  </div>
+</div>
+
+</details>
+
+<!-- ============================================================ -->
+<!-- SECTION 11: ATTACK PATHS                                     -->
+<!-- ============================================================ -->
+
+<h2 id="attack-paths">11. Attack Paths &amp; Pentesting Mindset</h2>
+
+<p>The most useful way to assess Kubernetes security is to think in chains, not isolated findings. An exposed dashboard is bad, but a dashboard that lets you create a privileged pod with the default service account in a namespace with no network policy is a full story. That is what matters.</p>
+
+<h3>Common Attack Chains</h3>
+
+<pre>
+Chain 1: App RCE -> SA token -> API reads -> secret theft
+  Vulnerable app
+    -> read mounted service account token
+    -> call API server
+    -> list pods/configmaps or read secrets
+    -> steal DB or cloud credentials
+
+Chain 2: App RCE -> privileged pod -> node compromise
+  Pod creation rights or privileged pod already exists
+    -> mount hostPath or use host namespaces
+    -> escape to node
+    -> access kubelet / runtime / other pods
+    -> pivot cluster-wide
+
+Chain 3: SSRF -> metadata -> cloud pivot
+  Workload reaches node metadata or cloud credential endpoint
+    -> retrieve node-scoped credentials
+    -> access cloud APIs
+    -> read storage, secrets, registries, or create new compute
+
+Chain 4: Flat network -> lateral movement
+  One pod compromised
+    -> scan internal services
+    -> reach admin UIs, metrics, Redis, Elasticsearch, or databases
+    -> expand access without touching Kubernetes RBAC at all
+</pre>
+
+<div class="attack-box">
+  <div class="attack-label">What Attackers Look For First</div>
+  <ul>
+    <li>Mounted service account tokens</li>
+    <li>Pods with <code>privileged: true</code> or host mounts</li>
+    <li>Ability to create workloads in any namespace</li>
+    <li>Readable Secrets and overly broad ConfigMaps</li>
+    <li>No network policy or trivial east-west access</li>
+    <li>Cloud metadata access from pods</li>
+    <li>Default service accounts reused everywhere</li>
+  </ul>
+</div>
+
+<h3>Hands-On Attack and Defence Examples (Lab Focus)</h3>
+
+<div class="diagram">
+  <div class="diagram-title">Scenario 1 - Steal Secrets via Service Account Token</div>
+  <pre>
+Attacker path (lab):
+1) Compromise app pod
+2) Read mounted SA token
+3) Call API server and list secrets
+
+How to do it (lab):
+kubectl exec -n app ns-pod -- \
+  sh -c "APISERVER=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT; \
+         TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token); \
+         curl -ks $APISERVER/api/v1/secrets -H \"Authorization: Bearer $TOKEN\""
+
+Prevent:
+- Disable automount for service accounts by default
+- Use projected, short-lived tokens
+- Lock RBAC: most pods should not list or get secrets
+- NetworkPolicy so pods cannot reach the API server if they do not need to
+  </pre>
+</div>
+
+<div class="diagram">
+  <div class="diagram-title">Scenario 2 - Privileged Pod + hostPath = Node Escape</div>
+  <pre>
+Attacker path (lab):
+1) Get workload creation rights
+2) Deploy privileged pod with hostPath /etc
+3) Read node secrets or host SSH keys
+
+How to do it (lab YAML):
+apiVersion: v1
+kind: Pod
+metadata: {name: escape, namespace: lab}
+spec:
+  hostPID: true
+  containers:
+  - name: sh
+    image: alpine
+    securityContext:
+      privileged: true
+    volumeMounts:
+    - {name: hostetc, mountPath: /host/etc}
+    command: ["sh","-c","ls /host/etc && cat /host/etc/hosts"]
+  volumes:
+  - name: hostetc
+    hostPath: {path: /etc}
+
+Prevent:
+- Pod Security Admission at restricted level (blocks privileged + hostPath)
+- Mutating/ValidatingAdmissionPolicy to refuse hostPath/privileged except for approved namespaces
+- Separate node pools for system daemons; no app-write to those nodes
+  </pre>
+</div>
+
+<div class="diagram">
+  <div class="diagram-title">Scenario 3 - No NetworkPolicy, Easy Lateral Movement</div>
+  <pre>
+Attacker path (lab):
+1) Get shell in any pod
+2) Scan cluster services and reach databases directly
+
+How to do it (lab):
+kubectl exec -n app ns-pod -- sh -c "apk add --no-cache nmap && nmap -sT 10.0.0.0/16"
+kubectl exec -n app ns-pod -- sh -c "nc -vz postgres.internal 5432"
+
+Prevent:
+- Default-deny ingress and egress NetworkPolicy in every namespace
+- Allow only required destinations (e.g., app -> DB) and DNS egress
+- Use a mesh or gateway for east-west auth if policy alone is not enough
+  </pre>
+</div>
+
+<div class="diagram">
+  <div class="diagram-title">Scenario 4 - Public API Endpoint Exposure</div>
+  <pre>
+Attacker path (lab):
+1) API server left public
+2) Stolen cloud creds or mis-scoped IAM lets attacker call the API
+3) Create privileged pods, exfiltrate data
+
+How to check (EKS example):
+aws eks describe-cluster --name prod --query "cluster.resourcesVpcConfig.endpointPublicAccess"
+
+Prevent:
+- Prefer private API endpoints; restrict public access with CIDR allowlists if you must keep it on
+- MFA + SSO for admins; short-lived credentials only
+- Audit logs on; alert on CreatePod/CreateClusterRoleBinding in prod
+  </pre>
+</div>
+
+<div class="defence-list">
+  <h4>Break the Chain Early</h4>
+  <ul>
+    <li>Even if the app gets RCE, do not hand it API credentials by default.</li>
+    <li>Even if the attacker gets API access, do not give that identity secret-read or workload-creation rights.</li>
+    <li>Even if the attacker lands in one pod, do not let it talk to everything else.</li>
+    <li>Even if one node is lost, do not let that node identity access every cloud resource.</li>
+  </ul>
+</div>
+
+<!-- ============================================================ -->
+<!-- SECTION 12: CHECKLIST                                        -->
+<!-- ============================================================ -->
+
+<h2 id="checklist">12. Hardening Checklist</h2>
+
+<p>If you only implement a handful of Kubernetes controls, make them the ones that most consistently break real attack chains.</p>
+
+<table>
+  <tr>
+    <th>Priority</th>
+    <th>What to do</th>
+    <th>Why first</th>
+  </tr>
+  <tr>
+    <td>Now</td>
+    <td>Enable Pod Security Admission with <code>restricted</code> for most namespaces</td>
+    <td>Removes a large class of dangerous pod specs quickly</td>
+  </tr>
+  <tr>
+    <td>Now</td>
+    <td>Review RBAC for workload creation, secret access, token creation, and broad cluster bindings</td>
+    <td>These permissions drive most escalations</td>
+  </tr>
+  <tr>
+    <td>Now</td>
+    <td>Disable service account token auto-mounting by default</td>
+    <td>Stops many pod-to-API pivots</td>
+  </tr>
+  <tr>
+    <td>Now</td>
+    <td>Turn on audit logging and protect the log destination</td>
+    <td>You need a timeline when things go wrong</td>
+  </tr>
+  <tr>
+    <td>Now</td>
+    <td>Encrypt Secrets at rest</td>
+    <td>Reduces etcd and control-plane disclosure risk</td>
+  </tr>
+  <tr>
+    <td>Soon</td>
+    <td>Adopt default-deny ingress and egress network policy</td>
+    <td>Reduces lateral movement and exfiltration paths</td>
+  </tr>
+  <tr>
+    <td>Soon</td>
+    <td>Move workloads to cloud workload identity instead of static cloud keys</td>
+    <td>Replaces long-lived credentials with short-lived federated identity</td>
+  </tr>
+  <tr>
+    <td>Soon</td>
+    <td>Pin images by digest and enforce policy against mutable tags</td>
+    <td>Makes runtime state auditable and repeatable</td>
+  </tr>
+  <tr>
+    <td>Advanced</td>
+    <td>Add validating admission policies for org-specific guardrails</td>
+    <td>Prevents drift and turns security rules into code</td>
+  </tr>
+  <tr>
+    <td>Advanced</td>
+    <td>Layer in signing, provenance, and runtime detection</td>
+    <td>Improves trust in what was deployed and catches post-deploy abuse</td>
+  </tr>
+</table>
+
+<div class="info-box key">
+  <strong>Simple mental model:</strong> make every pod low privilege, make every identity narrow, make every network path explicit, and make every high-risk change visible. If you do those four things well, Kubernetes becomes much harder to abuse.
+</div>
+
+</main>
+<button class="back-to-top" id="back-to-top" title="Back to top">&#8593;</button>
+<script>
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('pre').forEach(pre=>{
+    if(pre.querySelector('code')||pre.closest('.diagram'))return;
+    const t=pre.textContent,s=t.trim();
+    if(/^\s*[\+\|]/.test(t)&&/\+--|\|.*[\+\|]/.test(t))return;
+    let l=null;
+    if(/"Version"\s*:\s*"2012-10-17"/.test(t)||/^\s*\{[\s\S]*?"[^"]+"\s*:/.test(t))l='json';
+    else if(/^(resource|data|variable|output|provider|module|terraform)\s/.test(s))l='hcl';
+    else if(/apiVersion:|kind:\s|metadata:\s|spec:\s/.test(t))l='yaml';
+    else if(/^(server|location|upstream)\s*\{|proxy_pass/.test(s))l='nginx';
+    else if(/^(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER)\b/i.test(s))l='sql';
+    else if(/^(def |import |from .+ import|class .+:)/.test(s))l='python';
+    else if(/^(function |const |let |var |=>\s*\{|require\()/.test(s))l='javascript';
+    else if(/^(package |public class |import java\.)/.test(s))l='java';
+    else if(/^<\?php/.test(s))l='php';
+    else if(/^(gcloud |aws |kubectl |docker |terraform |curl |openssl |helm |git |pip |npm )/.test(s))l='bash';
+    else if(/^#[! ]/.test(s))l='bash';
+    if(l){const c=document.createElement('code');c.className='language-'+l;c.innerHTML=pre.innerHTML;pre.textContent='';pre.appendChild(c);}
+  });
+  if(typeof Prism!=='undefined')Prism.highlightAll();
+  document.querySelectorAll('pre').forEach(pre=>{
+    const btn=document.createElement('button');btn.className='copy-btn';btn.textContent='Copy';
+    btn.addEventListener('click',()=>{const code=pre.querySelector('code');navigator.clipboard.writeText((code||pre).textContent.trim());btn.textContent='Copied!';btn.classList.add('copied');setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},2000);});
+    pre.appendChild(btn);
+  });
+  const btt=document.getElementById('back-to-top');
+  window.addEventListener('scroll',()=>btt.classList.toggle('visible',window.scrollY>500));
+  btt.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+  // Scroll-spy
+  const obs=new IntersectionObserver(entries=>{entries.forEach(e=>{if(e.isIntersecting){document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));const a=document.querySelector('nav a[href="#'+e.target.id+'"]');if(a)a.classList.add('active');}});},{rootMargin:'-20% 0px -80% 0px'});
+  document.querySelectorAll('h2[id]').forEach(h=>obs.observe(h));
+});
+</script>
+</body>
+</html>

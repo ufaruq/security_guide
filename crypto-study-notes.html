@@ -41,16 +41,22 @@
   }
   .resource-bar span { color: var(--text-dim); margin-right: 4px; }
   .resource-bar a {
-    color: var(--accent); text-decoration: none;
+    text-decoration: none;
     padding: 4px 12px;
-    border: 1px solid rgba(0,212,170,0.3);
+    border: 1px solid transparent;
     border-radius: 5px;
     transition: all 0.15s;
     display: flex; align-items: center; gap: 5px;
   }
-  .resource-bar a:last-child { color: var(--accent2); border-color: rgba(124,92,252,0.3); }
-  .resource-bar a:hover { background: rgba(0,212,170,0.1); }
-  .resource-bar a:last-child:hover { background: rgba(124,92,252,0.1); }
+  .resource-bar a:hover { background: rgba(255,255,255,0.08); }
+  .resource-bar a.current { opacity: 0.4; pointer-events: none; }
+  .resource-bar a.c-tls { color: #00d4aa; border-color: rgba(0,212,170,0.3); }
+  .resource-bar a.c-browser { color: #7c5cfc; border-color: rgba(124,92,252,0.3); }
+  .resource-bar a.c-webapp { color: #ff6b6b; border-color: rgba(255,107,107,0.3); }
+  .resource-bar a.c-cloud { color: #4ea8de; border-color: rgba(78,168,222,0.3); }
+  .resource-bar a.c-k8s { color: #ff9f43; border-color: rgba(255,159,67,0.3); }
+  .resource-bar a.c-notes { color: #ffd93d; border-color: rgba(255,217,61,0.3); }
+  .resource-bar a.c-mindmap { color: #e06c9f; border-color: rgba(224,108,159,0.3); }
 
   /* ─── Layout ─── */
   .app {
@@ -346,9 +352,9 @@
   /* ─── Right Panel: Review Queue ─── */
   .review-panel {
     position: fixed;
-    right: 0; top: 0;
+    right: 0; top: 40px;
     width: 300px;
-    height: 100vh;
+    height: calc(100vh - 40px);
     background: var(--surface);
     border-left: 1px solid var(--border);
     padding: 20px 16px;
@@ -429,12 +435,14 @@
 <body>
 
 <div class="resource-bar">
-  <span>📚 Study Resources:</span>
-  <a href="tls-cryptographic-engineering-guide.html" target="_blank">📖 Full Reference Guide</a>
-  <a href="crypto-mind-map.html" target="_blank">🗺️ Interactive Mind Map</a>
-  <a href="web-app-security.html" target="_blank">🔓 Web App Security</a>
-  <a href="browser-security.html" target="_blank">🛡️ Browser Security</a>
-  <a href="cloud-security.html" target="_blank">&#9729; Cloud Security</a>
+  <span>Study Guide:</span>
+  <a href="tls-cryptographic-engineering-guide.html" class="c-tls">📖 TLS &amp; Crypto</a>
+  <a href="browser-security.html" class="c-browser">🛡️ Browser</a>
+  <a href="web-app-security.html" class="c-webapp">🔓 Web App</a>
+  <a href="cloud-security.html" class="c-cloud">☁ Cloud</a>
+  <a href="kubernetes-security.html" class="c-k8s">☸️ Kubernetes</a>
+  <a href="crypto-study-notes.html" class="c-notes current">📝 Study Notes</a>
+  <a href="crypto-mind-map.html" class="c-mindmap">🗺️ Mind Map</a>
 </div>
 
 <div class="app">
@@ -1031,15 +1039,15 @@ const sections = [
 let topicNotes = {};
 let topicStatuses = {};
 try {
-  const sn = sessionStorage?.getItem?.('study-notes');
+  const sn = localStorage?.getItem?.('study-notes');
   if (sn) topicNotes = JSON.parse(sn);
-  const ss = sessionStorage?.getItem?.('study-statuses');
+  const ss = localStorage?.getItem?.('study-statuses');
   if (ss) topicStatuses = JSON.parse(ss);
 } catch(e) {}
 const saveState = () => {
   try {
-    sessionStorage?.setItem?.('study-notes', JSON.stringify(topicNotes));
-    sessionStorage?.setItem?.('study-statuses', JSON.stringify(topicStatuses));
+    localStorage?.setItem?.('study-notes', JSON.stringify(topicNotes));
+    localStorage?.setItem?.('study-statuses', JSON.stringify(topicStatuses));
   } catch(e) {}
 };
 

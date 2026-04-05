@@ -91,13 +91,20 @@
   }
   .link-bar span { color: var(--text-dim); }
   .link-bar a {
-    color: var(--accent);
     text-decoration: none;
     padding: 4px 10px;
     border-radius: 4px;
     transition: all 0.15s;
   }
-  .link-bar a:hover { background: rgba(0,212,170,0.12); }
+  .link-bar a:hover { background: rgba(255,255,255,0.08); }
+  .link-bar a.current { opacity: 0.4; pointer-events: none; }
+  .link-bar a.c-tls { color: #00d4aa; }
+  .link-bar a.c-browser { color: #7c5cfc; }
+  .link-bar a.c-webapp { color: #ff6b6b; }
+  .link-bar a.c-cloud { color: #4ea8de; }
+  .link-bar a.c-k8s { color: #ff9f43; }
+  .link-bar a.c-notes { color: #ffd93d; }
+  .link-bar a.c-mindmap { color: #e06c9f; }
 
   /* ─── Canvas ─── */
   #canvas {
@@ -401,12 +408,14 @@
 </div>
 
 <div class="link-bar">
-  <span>Study Resources:</span>
-  <a href="tls-cryptographic-engineering-guide.html">Full Guide</a>
-  <a href="crypto-study-notes.html">Study Notes Tracker</a>
-  <a href="web-app-security.html" target="_blank">🔓 Web App Security</a>
-  <a href="browser-security.html" target="_blank">🛡️ Browser Security</a>
-  <a href="cloud-security.html" target="_blank">&#9729; Cloud Security</a>
+  <span>Study Guide:</span>
+  <a href="tls-cryptographic-engineering-guide.html" class="c-tls">📖 TLS &amp; Crypto</a>
+  <a href="browser-security.html" class="c-browser">🛡️ Browser</a>
+  <a href="web-app-security.html" class="c-webapp">🔓 Web App</a>
+  <a href="cloud-security.html" class="c-cloud">☁ Cloud</a>
+  <a href="kubernetes-security.html" class="c-k8s">☸️ Kubernetes</a>
+  <a href="crypto-study-notes.html" class="c-notes">📝 Study Notes</a>
+  <a href="crypto-mind-map.html" class="c-mindmap current">🗺️ Mind Map</a>
 </div>
 
 <div id="canvas">
@@ -478,7 +487,7 @@ const nodes = [
     desc: "HMAC-based key derivation (RFC 5869): Extract → Expand. TLS 1.3 uses a Derive-Secret() function built on top of Expand — it is not a separate HKDF primitive. Transcript hash at each step means tampering breaks all derived keys." },
   { id: "tls-ecdhe", title: "ECDHE Key Exchange", sub: "X25519 / P-256", x: -1050, y: -360, level: 2, theme: "tls", parent: "tls",
     desc: "Ephemeral Diffie-Hellman over elliptic curves. Fresh keys per connection = forward secrecy.",
-    example: "<strong>Corporate:</strong> AWS, Azure, and GCP all mandate X25519 for their load balancer TLS termination." },
+    example: "<strong>Corporate:</strong> AWS, Azure, and GCP all default to X25519 for their load balancer TLS termination (P-256 ECDHE is also supported)." },
   { id: "tls-forward", title: "Forward Secrecy", sub: "Ephemeral keys discarded", x: -1300, y: -340, level: 3, theme: "tls", parent: "tls-ecdhe",
     desc: "Past sessions can't be decrypted even if the long-term key is later compromised." },
   { id: "tls-cipher", title: "Cipher Suites", sub: "AES-GCM, ChaCha20-Poly1305", x: -1000, y: -240, level: 2, theme: "tls", parent: "tls",
@@ -835,14 +844,14 @@ let currentNoteNode = null;
 let showCrossLinks = true;
 
 try {
-  const saved = sessionStorage?.getItem?.('mindmap-notes-v2');
+  const saved = localStorage?.getItem?.('mindmap-notes-v2');
   if (saved) notes = JSON.parse(saved);
-  const savedTags = sessionStorage?.getItem?.('mindmap-tags-v2');
+  const savedTags = localStorage?.getItem?.('mindmap-tags-v2');
   if (savedTags) nodeTags = JSON.parse(savedTags);
 } catch(e) {}
 
-const saveNotes = () => { try { sessionStorage?.setItem?.('mindmap-notes-v2', JSON.stringify(notes)); } catch(e) {} };
-const saveTags = () => { try { sessionStorage?.setItem?.('mindmap-tags-v2', JSON.stringify(nodeTags)); } catch(e) {} };
+const saveNotes = () => { try { localStorage?.setItem?.('mindmap-notes-v2', JSON.stringify(notes)); } catch(e) {} };
+const saveTags = () => { try { localStorage?.setItem?.('mindmap-tags-v2', JSON.stringify(nodeTags)); } catch(e) {} };
 
 const world = document.getElementById('world');
 const canvas = document.getElementById('canvas');
